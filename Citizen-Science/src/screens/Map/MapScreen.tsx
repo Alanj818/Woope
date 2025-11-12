@@ -112,8 +112,7 @@ export const MapScreen = () => {
 
 
 			const data = await fetchPurpleAirData();
-			console.log(data.sensor.longitude);
-
+			
 			const transformedPins = allPins.map((pin) => ({
 				pin_id: pin.pin_id,
 				name: pin.name,
@@ -129,23 +128,29 @@ export const MapScreen = () => {
 				},
 			}));
 
-
-			//create one fake pin with the sensor long/lati, THEN add to transformsPins 
-
-			const purplePin: Pin = {
-				pin_id: -1, // Use negative ID to distinguish from database pins
-				name: data.sensor?.name || "PurpleAir Sensor",
-				date: new Date().toISOString().split('T')[0], // Today's date
-				description: 'Air quality sensor + data.sensor.temperature + data.sensor.pm2.5',
-				tag: "Weather",
-				image: null, // You could add a custom purple air icon here
-				location: {
-					latitude: data.sensor?.latitude,
-					longitude: data.sensor?.longitude,
-				},
-			}
-
-			const finalPins = [...transformedPins, purplePin];
+			let finalPins = [];
+			const purpleAirPins = data.map((sensorData, index) => {
+            console.log('Sensor data:', sensorData);
+            
+            // PurpleAir API structure: { sensor: { ... } }
+            const sensor = sensorData.sensor;
+            
+            return {
+                pin_id: -(index + 1), // Negative IDs to distinguish from database pins
+                name: sensor?.name || `PurpleAir Sensor ${index + 1}`,
+                date: new Date().toISOString().split('T')[0],
+                description: `Air quality sensor, Air Temp: ${sensor.temperature}°F, PM2.5: ${sensor['pm2.5_atm']} µg/m³`,
+                tag: "Weather",
+                image: null,
+                location: {
+                    latitude: sensor?.latitude,
+                    longitude: sensor?.longitude,
+                },
+            };
+        });
+			
+		
+			finalPins = [...transformedPins, ...purpleAirPins];
 
 			setPins([...finalPins]); // Spread operator ensures a new array
 			setFilteredPins([...finalPins]);
