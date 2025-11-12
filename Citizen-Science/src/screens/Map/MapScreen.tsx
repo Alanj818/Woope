@@ -112,7 +112,7 @@ export const MapScreen = () => {
 
 
 			const data = await fetchPurpleAirData();
-			console.log(data);
+			console.log(data.sensor.longitude);
 
 			const transformedPins = allPins.map((pin) => ({
 				pin_id: pin.pin_id,
@@ -129,21 +129,39 @@ export const MapScreen = () => {
 				},
 			}));
 
-			// console.log('\nTransformed Pins:', transformedPins);
 
-			setPins([...transformedPins]); // Spread operator ensures a new array
-			setFilteredPins([...transformedPins]);
+			//create one fake pin with the sensor long/lati, THEN add to transformsPins 
+
+			const purplePin: Pin = {
+				pin_id: -1, // Use negative ID to distinguish from database pins
+				name: data.sensor?.name || "PurpleAir Sensor",
+				date: new Date().toISOString().split('T')[0], // Today's date
+				description: 'Air quality sensor + data.sensor.temperature + data.sensor.pm2.5',
+				tag: "Weather",
+				image: null, // You could add a custom purple air icon here
+				location: {
+					latitude: data.sensor?.latitude,
+					longitude: data.sensor?.longitude,
+				},
+			}
+
+			const finalPins = [...transformedPins, purplePin];
+
+			setPins([...finalPins]); // Spread operator ensures a new array
+			setFilteredPins([...finalPins]);
 
 			//console.log('\nPins (from setPins) : ', pins)
 			//console.log("\nFiltered Pins (from setFilteredPins):", filteredPins)
 
-			return transformedPins;
+			return finalPins;
 
 		} catch (error) {
 			console.error('Error fetching all pins:', error);
 		}
 	};
+	
 
+				
 	// If fetchPins runs before the map is fully initialized, the pins might not render.
 	useEffect(() => {
 		if (initialRegion) {

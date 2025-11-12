@@ -2,11 +2,11 @@
 import { useEffect } from 'react';
 
 const API_KEY = "CEFE17E9-BE6A-11F0-BDE5-4201AC1DC121";
-const SENSOR_ID = "227901";
+const SENSOR_ID = "60377";
 
 export const fetchPurpleAirData = async () => {
   try {
-    const url = `https://api.purpleair.com/v1/sensors/${SENSOR_ID}?fields=latitude,longitude`;
+    const url = `https://api.purpleair.com/v1/sensors/${SENSOR_ID}?fields=latitude,longitude,pm2.5,temperature`;
     
     const response = await fetch(url, {
       headers: {
