@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { createPinNew, getAllPinsNew, deletePinNew, updatePinNew } from '../../api/pins';
+import {fetchPurpleAirData} from './purpleair'
+
+
 
 import {
 	View,
@@ -106,7 +109,10 @@ export const MapScreen = () => {
 	const fetchPins = async () => {
 		try {
 			const allPins = await getAllPinsNew(setUserToken);
-			// console.log('\nFetched pins from the server:', allPins); // We do get the pin_id
+
+
+			const data = await fetchPurpleAirData();
+			console.log(data);
 
 			const transformedPins = allPins.map((pin) => ({
 				pin_id: pin.pin_id,

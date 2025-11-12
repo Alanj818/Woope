@@ -1,5 +1,24 @@
 import { fetchAPI, fetchAPIWithFiles } from "./fetch";
 
+ //Purple Air pins
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 // Create new pin
 export const createPinNew = async (
   name: string,
