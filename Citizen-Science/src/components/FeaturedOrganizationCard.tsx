@@ -12,8 +12,8 @@ interface FeaturedOrganizationProps {
 const FeaturedOrganizationCard: React.FC<FeaturedOrganizationProps> = ({org_id, name, tagline, text_description, image_path}) => {
     const navigation = useNavigation<any>();
     return(
-        // Container
-        <View style={styles.postBox}>
+    // Container
+    <View style={styles.cardContainer}>
             {/*Organization Name, Category, Follow Button */}
             <View style ={styles.headerContainer}>
                 <View>
@@ -39,7 +39,7 @@ const FeaturedOrganizationCard: React.FC<FeaturedOrganizationProps> = ({org_id, 
                     name: name,
                     org_id: org_id,
                 })}>
-                    <Text>Visit Profile</Text>
+                    <Text style={styles.postButtonText}>Visit Profile</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -49,19 +49,21 @@ const deviceWidth = Math.round(Dimensions.get('window').width);
 const styles = StyleSheet.create({
     cardContainer: { 
         width: deviceWidth - 20,
-        backgroundColor: 'lightblue',
+        backgroundColor: '#FFFFFF',
         margin: 10,
-        borderRadius: 20,
-        padding: 13,
-        gap: 6,
+        borderRadius: 14,
+        padding: 14,
+        gap: 8,
         shadowColor: '#000',
         shadowOffset: {
-            width: 5,
-            height: 5,
+            width: 0,
+            height: 4,
         },
-        shadowOpacity: 0.25,
-        shadowRadius: 5,
-        elevation: 9,
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 4,
+        borderWidth: 1,
+        borderColor: '#E6F0FA'
     },
     headerContainer:{
         flexDirection:'row',
@@ -75,16 +77,19 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
     },
     title:{
-        fontSize: 20,
-        fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0F3C63',
     },
     tagline:{
-        fontSize: 14,
-        fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#436B8A',
     },
     description:{
-        fontSize: 10,
-        fontWeight: '300',
+    fontSize: 12,
+    fontWeight: '300',
+    color: '#385066',
     },
     category:{
         fontSize:14,
@@ -97,54 +102,21 @@ const styles = StyleSheet.create({
         padding: 10,
     },
     postButton:{
-        
-        padding:10,
+        paddingVertical:10,
+        paddingHorizontal:16,
         borderRadius:10,
-        backgroundColor:'white',
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 5,
-            height: 5,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 5,
-        elevation: 9,
+        backgroundColor:'#2F80ED',
+        shadowColor: '#2F80ED',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12,
+        shadowRadius: 4,
+        elevation: 3,
     },
-    postBox: {
-        backgroundColor: "#B4D7EE",
-        borderRadius: 30,
-        paddingVertical: 20,
-        paddingHorizontal: 15,
-        justifyContent: "center",
-        alignSelf: "stretch",
-        marginHorizontal: 10,
-        marginBottom: 40,
-        borderWidth: 1,
-        borderColor: "#E7F3FD",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 6,
-        elevation: 5,
-        marginTop: 6,
-      },
-      postBoxInner: {
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: "transparent",
-        alignSelf: "stretch",
-        borderBottomWidth: 1,
-        borderBottomColor: "#D1E3FA",
-      },
-      postBoxText: {
-        fontSize: 16,
-        color: "#333",
-        padding: 10,
-        backgroundColor: "#FFFFFF",
-        borderRadius: 18,
-        overflow: "hidden",
-        textAlign: "center",
-      }
+    postButtonText: {
+        color: '#FFFFFF',
+        fontWeight: '600'
+    },
+    // postBox and inner styles removed in favor of cardContainer
     
 
 });
