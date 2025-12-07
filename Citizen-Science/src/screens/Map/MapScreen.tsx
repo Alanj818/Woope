@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef, useContext } from 'react';
 import { createPinNew, getAllPinsNew, deletePinNew, updatePinNew } from '../../api/pins';
 import {fetchPurpleAirData} from './purpleair'
 
-
-
 import {
 	View,
 	Dimensions,
@@ -15,12 +13,13 @@ import {
 	Text,
 	ScrollView,
 	Alert,
+	ActivityIndicator,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
-import * as Camera from 'expo-camera';
+//import * as Camera from 'expo-camera';
 import DropDownPicker from 'react-native-dropdown-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as MediaLibrary from 'expo-media-library';
@@ -61,39 +60,39 @@ export const MapScreen = () => {
 	const { userToken, setUserToken } = useContext(AuthContext);
 	const decodedToken = userToken ? jwtDecode<AccessToken>(userToken) : null;
 	const userId = decodedToken ? decodedToken.user_id : NaN;
+
+    const [loading, setLoading] = useState(true);     // Entire screen loading
+    const [pinLoading, setPinLoading] = useState(false); // Refreshing pins only
+
 	const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
 	const [initialRegion, setInitialRegion] = useState<Region | null>(null);
+
 	const [pins, setPins] = useState<Pin[]>([]);
 	const [filteredPins, setFilteredPins] = useState<Pin[]>([]);
-	const [filterModalVisible, setFilterModalVisible] = useState(false);
 
+	const [filterModalVisible, setFilterModalVisible] = useState(false);
 	const [modalVisible, setModalVisible] = useState(false);
 	const [detailsVisible, setDetailsVisible] = useState(false); // For the sliding info modal
+
 	const [showDatePicker, setShowDatePicker] = useState(false);
 	const [selectedPin, setSelectedPin] = useState<Pin | null>(null); // Pin selected for details
 	const [formLocation, setFormLocation] = useState<Location | null>(null);
+
 	const [isMarkerPressed, setIsMarkerPressed] = useState(false);
-	const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
 	const [isEditMode, setIsEditMode] = useState(false);
-	const [formData, setFormData] = useState<{
-		name: string;
-		date: string;
-		description: string;
-		tag: string;
-		image: string | null; // Allow both string and null
-		location: { latitude: number; longitude: number } | null;
-	}>({
-		name: '',
-		date: '',
-		description: '',
-		tag: 'General',
-		image: null,
-		location: null,
-	});
 	const [filterTag, setFilterTag] = useState('All'); // For filtering pins
 
-	// Dropdown state for Tag Picker
-	const [dropdownOpen, setDropdownOpen] = useState(false);
+	const isMarkerPressedRef = useRef(false);
+
+	const [formData, setFormData] = useState({
+        name: '',
+        date: '',
+        description: '',
+        tag: 'General',
+        image: null as string | null,
+        location: null as Location | null,
+    });
+
 	const [tagItems, setTagItems] = useState([
 		{ label: 'General', value: 'General' },
 		{ label: 'Weather', value: 'Weather' },
@@ -108,9 +107,9 @@ export const MapScreen = () => {
 
 	const fetchPins = async () => {
 		try {
+			setPinLoading(true);
+
 			const allPins = await getAllPinsNew(setUserToken);
-
-
 			const data = await fetchPurpleAirData();
 			
 			const transformedPins = allPins.map((pin) => ({
@@ -128,87 +127,78 @@ export const MapScreen = () => {
 				},
 			}));
 
-			let finalPins = [];
+			
 			const purpleAirPins = data.map((sensorData, index) => {
-            console.log('Sensor data:', sensorData);
+				const sensor = sensorData.sensor;
             
-            // PurpleAir API structure: { sensor: { ... } }
-            const sensor = sensorData.sensor;
-            
-            return {
-                pin_id: -(index + 1), // Negative IDs to distinguish from database pins
-                name: sensor?.name || `PurpleAir Sensor ${index + 1}`,
-                date: new Date().toISOString().split('T')[0],
-                description: `Air quality sensor, Air Temp: ${sensor.temperature}°F, PM2.5: ${sensor['pm2.5_atm']} µg/m³`,
-                tag: "Weather",
-                image: null,
-                location: {
-                    latitude: sensor?.latitude,
-                    longitude: sensor?.longitude,
-                },
-            };
-        });
+				return {
+					pin_id: -(index + 1), // Negative IDs to distinguish from database pins
+					name: sensor?.name || `PurpleAir Sensor ${index + 1}`,
+					date: new Date().toISOString().split('T')[0],
+					description: `Air quality sensor, Air Temp: ${sensor.temperature}°F, PM2.5: ${sensor['pm2.5_atm']} µg/m³`,
+					tag: "Weather",
+					image: null,
+					location: { latitude: sensor?.latitude, longitude: sensor?.longitude },
+				};
+        	});
 			
 		
-			finalPins = [...transformedPins, ...purpleAirPins];
+			const combinedPins = [...transformedPins, ...purpleAirPins]
 
-			setPins([...finalPins]); // Spread operator ensures a new array
-			setFilteredPins([...finalPins]);
+			setPins(combinedPins); // Spread operator ensures a new array
+			setFilteredPins(combinedPins);
 
 			//console.log('\nPins (from setPins) : ', pins)
 			//console.log("\nFiltered Pins (from setFilteredPins):", filteredPins)
 
-			return finalPins;
+			//return finalPins;
 
 		} catch (error) {
 			console.error('Error fetching all pins:', error);
+		} finally {
+			setPinLoading(false);
 		}
 	};
 	
+	//Intitial Load (location + Pins)
+	 useEffect(() => {
+        const loadEverything = async () => {
+            try {
+                // 1. Location permission
+                let { status } = await Location.requestForegroundPermissionsAsync();
+                if (status !== "granted") {
+                    console.log("Location permission denied");
+                    setLoading(false);
+                    return;
+                }
 
-				
-	// If fetchPins runs before the map is fully initialized, the pins might not render.
-	useEffect(() => {
-		if (initialRegion) {
-			fetchPins();
-		}
-	}, [initialRegion]);
+                // 2. Get current location
+                const loc = await Location.getCurrentPositionAsync({});
+                setCurrentLocation(loc.coords);
 
-	useEffect(() => {
-		fetchPins().then((pins) => {
-			//console.log(pins); // Access the resolved array
-		});
-	}, []);
+                setInitialRegion({
+                    latitude: loc.coords.latitude,
+                    longitude: loc.coords.longitude,
+                    latitudeDelta: 0.005,
+                    longitudeDelta: 0.005,
+                });
 
-	useEffect(() => {
-		//console.log('\nUpdated Pins:', pins);
-		//console.log('\nUpdated Filtered Pins:', filteredPins);
-	}, [pins, filteredPins]);
+                // 3. Load pins
+                await fetchPins();
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false); 
+            }
+        };
 
-	// End Fetch Pins
+        loadEverything();
+    }, []);
 
-	useEffect(() => {
-		const getLocation = async () => {
-			let { status } = await Location.requestForegroundPermissionsAsync();
-			if (status !== 'granted') {
-				console.log('Permission to access location was denied');
-				return;
-			}
+	
+	
 
-			let location = await Location.getCurrentPositionAsync({});
-			setCurrentLocation(location.coords);
-
-			setInitialRegion({
-				latitude: location.coords.latitude,
-				longitude: location.coords.longitude,
-				latitudeDelta: 0.005,
-				longitudeDelta: 0.005,
-			});
-		};
-
-		getLocation();
-	}, []);
-
+	//filtering
 	useEffect(() => {
 		// Filter pins based on the selected tag
 		if (filterTag === 'All') {
@@ -219,7 +209,21 @@ export const MapScreen = () => {
 	}, [pins, filterTag]);
 
 
-	const isMarkerPressedRef = useRef(false);
+	//Loading 
+	 if (loading) {
+        return (
+            <View style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+                backgroundColor: "white",
+            }}>
+                <ActivityIndicator size="large" color="#ff8c00" />
+                <Text style={{ marginTop: 10 }}>Loading Map...</Text>
+            </View>
+        );
+    }
+	
 
 	const handleMarkerPress = (pin: Pin) => {
 		console.log('Marker pressed:', pin);
@@ -582,6 +586,21 @@ export const MapScreen = () => {
 				<Text style={{ color: 'white', fontWeight: 'bold' }}>Filter</Text>
 			</TouchableOpacity>
 
+
+			{/* Loading Screen */}
+            {pinLoading && (
+                <View style={{
+                    position: "absolute",
+                    top: 20,
+                    right: 20,
+                    padding: 10,
+                    backgroundColor: "rgba(255,255,255,0.8)",
+                    borderRadius: 10,
+                    zIndex: 100,
+                }}>
+                    <ActivityIndicator size="small" color="#ff8c00" />
+                </View>
+            )}
 
 			{/* Map */}
 			{initialRegion && (
