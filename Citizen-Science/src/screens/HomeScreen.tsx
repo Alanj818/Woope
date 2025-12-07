@@ -43,6 +43,7 @@ import {
   getPostLikes,
   getUserLikedPosts,
 } from "../api/posts";
+import { getPostById } from "../api/posts";
 import {
   createComment,
   deleteComment,
@@ -271,8 +272,19 @@ const HomeScreen = () => {
     }
 
     try {
+      try {
+        await getPostById(editingPostId, setUserToken);
+      } catch (err) {
+        console.error('Post lookup failed before update:', err);
+        setError('Post not found. It may have been deleted.');
+        setIsEditing(false);
+        setEditingPostId(null);
+        setPostText('');
+        return;
+      }
+
       const updatedPost = await updatePost(editingPostId, postText, setUserToken); // Adjust parameters as needed
-      await logActivity(userId, `User edited post with id ${editingPostId}`)
+      await logActivity(userId, `User edited post with id ${editingPostId}`);
       fetchPosts();
 
       // Reset the form and editing state
@@ -283,7 +295,7 @@ const HomeScreen = () => {
       setPostPdfs([]);
       setIsPosting(false);
     } catch (error) {
-      console.error("Failed to update the post:", error);
+  console.error("Failed to update the post:", error);
     }
   };
 
@@ -429,8 +441,38 @@ const HomeScreen = () => {
                   </Text>
                 </View>
               </View>
-              {item.content && (
-                <Text style={styles.postText}>{item.content}</Text>
+              {isEditing && editingPostId === item.post_id ? (
+                <View style={{ width: '100%' }}>
+                  <TextInput
+                    style={[styles.input, { marginBottom: 8 }]}
+                    value={postText}
+                    onChangeText={setPostText}
+                    multiline
+                    numberOfLines={3}
+                  />
+                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+                    <TouchableOpacity
+                      style={[styles.postButton, { backgroundColor: '#ccc', marginRight: 8 }]}
+                      onPress={() => {
+                        setIsEditing(false);
+                        setEditingPostId(null);
+                        setPostText('');
+                      }}
+                    >
+                      <Text style={[styles.postButtonText, { color: '#333' }]}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.postButton}
+                      onPress={handleUpdatePost}
+                    >
+                      <Text style={styles.postButtonText}>Save</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                item.content && (
+                  <Text style={styles.postText}>{item.content}</Text>
+                )
               )}
               {item.image?.length > 0 && (
                 <FlatList
