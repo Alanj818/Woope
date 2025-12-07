@@ -5,6 +5,7 @@ import { getUser, createUser, getUserByRefreshToken } from '../models/users';
 import { hashPassword, comparePasswords } from '../utils/password';
 import { createAccessToken, createRefreshToken } from '../utils/token';
 import jwt from 'jsonwebtoken';
+import { logRegister, logLogin, logLogout } from '../models/userActions';
 
 const pool = require('../db');
 const router = require('express').Router();
@@ -83,7 +84,8 @@ router.post('/login', async (req: express.Request, res: express.Response) => {
 
             await pool.query('UPDATE users SET last_login = NOW() WHERE user_id = $1', [user.user_id]);
             await pool.query('UPDATE users SET refresh_token = $1 WHERE user_id = $2', [hashedRefreshToken, user.user_id]);
-
+            console.log("NOW attempting to insert user_id to table user_logins in postgres");
+            await logLogin(user.user_id);
             console.log('✅ Login successful');
             res.status(200).json({
                 accessToken,
@@ -111,6 +113,7 @@ router.post('/logout', async (req: express.Request, res: express.Response) => {
 
     try {
         await pool.query('UPDATE users SET refresh_token = NULL WHERE user_id = $1', [userId]);
+        await logLogout(userId);
 
         res.status(200).json('Successfully logged out');
     } catch (error) {
@@ -141,7 +144,7 @@ router.post('/register', async (req: express.Request, res: express.Response) => 
         const hashedRefreshToken = await hashPassword(refreshToken);
 
         await pool.query('UPDATE users SET refresh_token = $1 WHERE user_id = $2', [hashedRefreshToken, newUser.user_id]);
-
+        await logRegister(newUser.user_id);
         const accessToken = await createAccessToken(newUser);
 
         res.status(201).json({
