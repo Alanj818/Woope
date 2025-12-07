@@ -1,4 +1,5 @@
 import { Pin, PinNew } from "../interfaces/pin";
+import { logPinDrop } from "./userActions";
 const pool = require('../db');
 
 // Old Pins
@@ -64,6 +65,7 @@ export const createPinNew = async (
         );
 
         console.log('Created Pin:', response.rows[0]); // Debug log for the created pin
+        await logPinDrop(user_id);
         return response.rows[0];
     } catch (error) {
         console.error('Error creating pin', error);
