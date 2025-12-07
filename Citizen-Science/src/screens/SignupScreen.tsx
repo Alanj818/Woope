@@ -353,7 +353,6 @@ const SignupScreen = () => {
 							position={{ top: 3, left: 0 }} // Adjust position of OTP field
 							textContentType={'oneTimeCode'} //testing
 							autoFocus={true} //auto focus on OTP field when it appears
-
 						/>
 					)}
 					{/* Signup Button */}

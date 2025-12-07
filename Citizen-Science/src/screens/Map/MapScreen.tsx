@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { createPinNew, getAllPinsNew, deletePinNew, updatePinNew } from '../../api/pins';
+import {fetchPurpleAirData} from './purpleair'
+
+
 
 import {
 	View,
@@ -106,8 +109,10 @@ export const MapScreen = () => {
 	const fetchPins = async () => {
 		try {
 			const allPins = await getAllPinsNew(setUserToken);
-			// console.log('\nFetched pins from the server:', allPins); // We do get the pin_id
 
+
+			const data = await fetchPurpleAirData();
+			
 			const transformedPins = allPins.map((pin) => ({
 				pin_id: pin.pin_id,
 				name: pin.name,
@@ -123,21 +128,45 @@ export const MapScreen = () => {
 				},
 			}));
 
-			// console.log('\nTransformed Pins:', transformedPins);
+			let finalPins = [];
+			const purpleAirPins = data.map((sensorData, index) => {
+            console.log('Sensor data:', sensorData);
+            
+            // PurpleAir API structure: { sensor: { ... } }
+            const sensor = sensorData.sensor;
+            
+            return {
+                pin_id: -(index + 1), // Negative IDs to distinguish from database pins
+                name: sensor?.name || `PurpleAir Sensor ${index + 1}`,
+                date: new Date().toISOString().split('T')[0],
+                description: `Air quality sensor, Air Temp: ${sensor.temperature}°F, PM2.5: ${sensor['pm2.5_atm']} µg/m³`,
+                tag: "Weather",
+                image: null,
+                location: {
+                    latitude: sensor?.latitude,
+                    longitude: sensor?.longitude,
+                },
+            };
+        });
+			
+		
+			finalPins = [...transformedPins, ...purpleAirPins];
 
-			setPins([...transformedPins]); // Spread operator ensures a new array
-			setFilteredPins([...transformedPins]);
+			setPins([...finalPins]); // Spread operator ensures a new array
+			setFilteredPins([...finalPins]);
 
 			//console.log('\nPins (from setPins) : ', pins)
 			//console.log("\nFiltered Pins (from setFilteredPins):", filteredPins)
 
-			return transformedPins;
+			return finalPins;
 
 		} catch (error) {
 			console.error('Error fetching all pins:', error);
 		}
 	};
+	
 
+				
 	// If fetchPins runs before the map is fully initialized, the pins might not render.
 	useEffect(() => {
 		if (initialRegion) {

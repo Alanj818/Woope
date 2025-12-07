@@ -1,4 +1,5 @@
 import { Post, PostWithUsername, PostWithMedia, UserLikedPosts } from "../interfaces/post";
+import { logPosts } from "./userActions";
 
 const pool = require('../db');
 
@@ -85,6 +86,7 @@ export const createPost = async (user_id: number, org_id: number | null, content
       'INSERT INTO posts (user_id, content, is_active, org_id) VALUES ($1, $2, $3, $4) RETURNING *',
       [user_id, content, isActive, org_id]
     );
+    await logPosts(user_id);
     return response.rows[0];
   } catch (error) {
     console.error('Error creating post', error);

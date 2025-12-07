@@ -325,7 +325,7 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
                 // Added defaultSource to show default avatar while loading
                 // Added require for default avatar at top of file
               source={
-              userPfp 
+              userPfp
               ? { uri: userPfp }
               : {uri:'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png'}
               }
