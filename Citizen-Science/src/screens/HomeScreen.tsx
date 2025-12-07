@@ -410,13 +410,17 @@ const HomeScreen = () => {
           refreshing={refreshing}
           onRefresh={onRefresh}
           renderItem={({ item }) => (
+
             <View style={styles.post}>
               <View style={styles.headerRow}>
-                <Image
-                  source={{ uri: `${process.env.EXPO_PUBLIC_API_URL}${item.image_url}` }}
-
+                  <Image
+                  source={
+                    item.image_url
+                      ? { uri: `${process.env.EXPO_PUBLIC_API_URL}${item.image_url}` }
+                      : { uri: 'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png' }
+                  }
                   style={styles.avatar}
-                />
+/>
                 <View style={styles.headerTextContainer}>
                   <Text style={styles.userName}>{item.userName}</Text>
                   <Text style={styles.timestamp}>

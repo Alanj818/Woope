@@ -1,10 +1,11 @@
 import React, {useState, Fragment, useCallback, useMemo, useRef, useEffect, useContext} from 'react';
-import {StyleSheet, View, Text, TouchableOpacity, Dimensions} from 'react-native';
-import {Calendar} from 'react-native-calendars';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import {StyleSheet, View, ScrollView, Text, TouchableOpacity, Button, Dimensions} from 'react-native';
+import {Calendar, CalendarUtils} from 'react-native-calendars';
+import { useFocusEffect } from '@react-navigation/native';
 import { getDates, getFollowedDates, getUserDates } from '../../api/event';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { addMonths, DateArg, subMonths} from 'date-fns';
+import { addMonths, DateArg, getDay, getMonth, subMonths, fromUnixTime, addDays} from 'date-fns';
+import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../../util/AuthContext';
 import { jwtDecode } from 'jwt-decode';
 import { AccessToken } from '../../util/token';

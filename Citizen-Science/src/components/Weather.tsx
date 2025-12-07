@@ -3,6 +3,7 @@ import { View, Text, ActivityIndicator, ScrollView, StyleSheet, Alert } from 're
 import axios from 'axios';
 import * as Location from 'expo-location';
 
+//what info we want from the weather api
 interface WeatherData {
     Day: string;
     Temp: number;
@@ -10,18 +11,48 @@ interface WeatherData {
     Description: string;
 }
 
-const getWeatherIcon = (description: string) => {
-    const lowerCaseDescription = description.toLowerCase();
-    if (lowerCaseDescription.includes('clear')) return '☀️';
-    if (lowerCaseDescription.includes('cloudy')) return '☁️';
-    if (lowerCaseDescription.includes('rain')) return '🌧️';
-    if (lowerCaseDescription.includes('snow')) return '❄️';
-    if (lowerCaseDescription.includes('thunder')) return '⛈️';
-    return '🌈';
+//Weather icon displayed on each day's weather information
+const getWeatherIcon = (description: string, day: string) => {
+    const d = description.toLowerCase();
+    const isNight = day.toLowerCase().includes('night');
+
+    const isClear = d.includes('clear') || d.includes('sunny');
+
+    switch (true) {
+        case isClear && isNight:
+            return '🌙';
+        case isClear:
+            return '☀️';
+        case d.includes('cloud'):
+            return '☁️';
+        case d.includes('rain'):
+            return '🌧️';
+        case d.includes('snow'):
+            return '❄️';
+        case d.includes('thunder'):
+            return '⛈️';
+        default:
+            return '🌈';
+    }
+};
+
+//The weather data by default has holidays built in this function removes them
+//weekday array is kept out of the function to not keep reintializing everytime function is called
+const weekdayNames = [
+    "Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"
+];
+const getCorrectDay = (index: number) => {
+    const today = new Date().getDay(); // 0=Sun ... 6=Sat
+
+    const dayIndex = Math.floor(index / 2);
+    const weekday = weekdayNames[(today + dayIndex) % 7];
+
+    //if index is even then day, else its night
+    return index % 2 === 1 ? `${weekday} Night` : weekday;
 };
 
 const Weather: React.FC = () => {
-    const [weatherData, setWeatherData] = useState<WeatherData[]>([]);
+    const [weatherData, setWeatherData] = useState<WeatherData[]>([]); //stores api responce 
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [locationName, setLocationName] = useState<string>('Your Location');
@@ -29,22 +60,28 @@ const Weather: React.FC = () => {
     useEffect(() => {
         const fetchWeatherData = async () => {
             try {
+
+                //get GPS permission, if failed then give err
                 const { status } = await Location.requestForegroundPermissionsAsync();
                 if (status !== 'granted') {
                     setError('Location permission denied');
                     return;
                 }
 
+                //wait to get location
                 const location = await Location.getCurrentPositionAsync({});
                 const { latitude, longitude } = location.coords;
-
+                
+                //call and wait for weather API call, get the first 7 data information
                 const response = await axios.get<WeatherData[]>(
                     `${process.env.EXPO_PUBLIC_API_URL}/weather/forecast?lat=${latitude}&lon=${longitude}`
                 );
 
+                //get the first 7 data information, ex: "Tuesday", "Tuesday Night", "Wednesday", "Wednesday night" and so on
+                //so really it gets the next 3 day and night + 1 more day
                 setWeatherData(response.data.slice(0, 7));
 
-                // Optional: Get location name using reverse geocoding
+                //with the location with convert the lat & long to the city's name
                 const geo = await Location.reverseGeocodeAsync({ latitude, longitude });
                 if (geo.length > 0) {
                     const city = geo[0].city || geo[0].region || 'Your Location';
@@ -62,18 +99,19 @@ const Weather: React.FC = () => {
         fetchWeatherData();
     }, []);
 
-    if (loading) return <ActivityIndicator size="large" color="#ff8c00" />;
+    if (loading) return <ActivityIndicator size="large" color="#ff8c00" />; //loading bar
     if (error) return <Text style={styles.errorText}>Error: {error}</Text>;
 
+    //UI
     return (
         <View style={styles.container}>
             <Text style={styles.cityText}>{locationName}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView}>
                 {weatherData.map((data, index) => (
                     <View key={index} style={styles.weatherItem}>
-                        <Text style={styles.weatherIcon}>{getWeatherIcon(data.Description)}</Text>
+                        <Text style={styles.weatherIcon}>{getWeatherIcon(data.Description, data.Day)}</Text>
                         <View style={styles.weatherDetails}>
-                            <Text style={styles.day}>{data.Day}</Text>
+                            <Text style={styles.day}>{getCorrectDay(index)}</Text>
                             <Text style={styles.temperature}>{data.Temp}°{data.TempUnit}</Text>
                             <Text style={styles.description}>{data.Description}</Text>
                         </View>

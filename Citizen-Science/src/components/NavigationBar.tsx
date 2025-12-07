@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useContext } from 'react';
 import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -23,7 +23,12 @@ import FeatureOrganization from '../screens/Organizations/FeatureOrganization';
 import EventHome from '../screens/Events/EventHome';
 import ReportScreen from '../screens/ReportScreen';
 import DateScreen from '../screens/Calendar/DateScreen';
-import OldCalendarScreen from '../screens/OldCalendarScreen'
+
+import ProfileScreen from '../screens/Profile/ProfileScreen';
+import { AuthContext } from "../util/AuthContext";
+import { jwtDecode } from "jwt-decode";
+import { AccessToken } from "../util/token";
+
 
 const Tab = createBottomTabNavigator();
 interface AnimatedTabIconProps {
@@ -67,6 +72,24 @@ const ResourceStackScreen = () => (
         <ResourceStack.Screen name="EventHome" component={EventHome}/>
     </ResourceStack.Navigator>
 )
+
+const ProfileStack = createNativeStackNavigator();
+
+const ProfileStackScreen = () => {
+  const { userToken } = useContext(AuthContext);
+  const decodedToken = userToken ? jwtDecode<AccessToken>(userToken) : null;
+  const currentUserID = decodedToken ? decodedToken.user_id : null;
+
+  return (
+    <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+      <ProfileStack.Screen
+        name="ProfileMain"
+        component={ProfileScreen}
+        initialParams={{ userID: currentUserID }}
+      />
+    </ProfileStack.Navigator>
+  );
+};
 
 const NavigationBar = () => {
     return (
@@ -117,7 +140,7 @@ const NavigationBar = () => {
                 <Tab.Screen name="Calendar" component={CalendarScreen} />
                 <Tab.Screen name="Resources" component={ResourceStackScreen} />
                 <Tab.Screen name="Map" component={MapScreen} />
-                <Tab.Screen name="Report" component={ReportScreen} />
+                <Tab.Screen name="Profile" component={ProfileStackScreen}  />
             </Tab.Navigator>
         </View>
     );

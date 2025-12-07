@@ -23,6 +23,8 @@ import ProfileSearchScreen from "../screens/ProfileSearchScreen";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import ProfileStackNavigator from "./ProfileStackNav";
 
+import BugReportScreen from "../screens/ReportScreen"
+
 const Drawer = createDrawerNavigator();
 
 function CustomDrawerSideMenu(
@@ -93,7 +95,10 @@ function CommunitySideMenu() {
           name="Search"
           component={SearchStackNavigator}
         ></Drawer.Screen>
+
+        <Drawer.Screen name="Bug Report" component={BugReportScreen} />
       </Drawer.Navigator>
+
     </View>
   );
 }
