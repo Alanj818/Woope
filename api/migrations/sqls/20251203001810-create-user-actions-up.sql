@@ -1,0 +1,6 @@
+CREATE TABLE user_actions (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    action TEXT NOT NULL,
+    action_time TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
