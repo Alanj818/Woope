@@ -306,9 +306,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
                 // Added defaultSource to show default avatar while loading
                 // Added require for default avatar at top of file
               source={
-              userPfp
-              ? { uri: userPfp }
-              : {uri:'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png'}
+               // userPfp
+              // ? { uri: userPfp }
+              {uri: 'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png'}
               }
               onError={(e) => console.log('Profile image error:', e.nativeEvent.error)}
               onLoad={() => console.log('Profile image loaded')}
@@ -492,9 +492,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
               {/*eddited logic for default profile picture*/}
               <Image
                 source={
-                  item.image_url
-                    ?{ uri: `${process.env.EXPO_PUBLIC_API_URL}${item.image_url}` }
-                    :{uri: 'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png'}
+                    // item.image_url
+                    // ?{ uri: `${process.env.EXPO_PUBLIC_API_URL}${item.image_url}` }
+                    {uri: 'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png'}
                 }
                 style={styles.avatar}
               />
