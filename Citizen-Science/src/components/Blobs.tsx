@@ -1,7 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Image, SafeAreaView } from "react-native";
-import { BlobProps } from "../types";
 import { responsiveHeight, responsiveWidth } from "react-native-responsive-dimensions";
+
+
+export type BlobProps = {
+    // Rotation is not required because it is randomized in the Blob component
+    rotationDeg?: string; // Format: '45deg'
+    image?: string;
+    widthPercentage: number;
+    heightPercentage: number;
+    position: { top: number; left: number };
+
+};
+
+
 
 const blobs = [
     require('../../assets/blobs/Blob_4.png'),
@@ -14,11 +26,11 @@ const blobs = [
 ];
 
 const Blobs: React.FC<BlobProps> = ({
-                                        image,
-                                        widthPercentage,
-                                        heightPercentage,
-                                        position,
-                                    }) => {
+    image,
+    widthPercentage,
+    heightPercentage,
+    position,
+}) => {
     // State to hold the selected blob image
     const [selectedBlob, setSelectedBlob] = useState(image || getRandomBlob());
 

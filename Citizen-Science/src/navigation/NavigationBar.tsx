@@ -6,7 +6,7 @@ import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-na
 import Svg, { Path } from 'react-native-svg';
 import { mdiHome, mdiTestTube, mdiCalendar, mdiBookshelf, mdiMapMarker, mdiFileDocument } from '@mdi/js';
 import CalendarScreen from '../screens/Calendar/CalendarScreen';
-import CommunitySideMenu from './CommunitySideMenu';
+import CommunitySideMenu from '../components/CommunitySideMenu';
 import { MapScreen } from '../screens/Map/MapScreen';
 
 import ResourceHome from '../screens/Organizations/ResourceHome';
@@ -28,6 +28,8 @@ import ProfileScreen from '../screens/Profile/ProfileScreen';
 import { AuthContext } from "../util/AuthContext";
 import { jwtDecode } from "jwt-decode";
 import { AccessToken } from "../util/token";
+
+import { usePalette} from '../theme/paletteController'
 
 
 const Tab = createBottomTabNavigator();
@@ -92,6 +94,8 @@ const ProfileStackScreen = () => {
 };
 
 const NavigationBar = () => {
+    const { theme } = usePalette();
+
     return (
         <View style={{ flex: 1 }}>
             <Tab.Navigator
@@ -123,7 +127,7 @@ const NavigationBar = () => {
                     tabBarActiveTintColor: 'blue',
                     tabBarInactiveTintColor: 'black',
                     tabBarStyle:{
-                        backgroundColor: 'lightblue',
+                        backgroundColor: theme.main,
                         paddingBottom: 13,
                         paddingTop: 2,
                         height: 80,

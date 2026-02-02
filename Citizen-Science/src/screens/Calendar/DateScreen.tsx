@@ -1,7 +1,6 @@
 import React, {useEffect, useState} from 'react'
 import { useNavigation, useFocusEffect} from '@react-navigation/native';
 import { View, Text, SafeAreaView, FlatList, TouchableOpacity, StyleSheet, StatusBar, ScrollView } from 'react-native';
-import EventCard from '../../components/EventCard';
 import EventCardViewOnly from '../../components/EventCardViewOnly';
 import { Event } from '../../api/types';
 import { getDayEvents, getFollowedEvents, getUserEvents } from '../../api/event';

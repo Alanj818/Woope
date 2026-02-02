@@ -1,11 +1,7 @@
-/*
-    !! IMPLEMENT IMAGE_PATH
-*/
-
 import React, {useState} from "react";
 import { Modal, View, TextInput, Button, StyleSheet, SafeAreaView, Text, FlatList} from "react-native";
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { createEvents } from "../api/event";
+import { createEvents } from "../../api/event";
 interface EventInfo {
     name: string;
     tagline: string;

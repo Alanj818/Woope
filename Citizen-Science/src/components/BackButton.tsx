@@ -3,7 +3,12 @@ import {TouchableOpacity, ViewStyle } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { responsiveHeight, responsiveWidth } from "react-native-responsive-dimensions";
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { BackButtonProps } from "../types";
+
+
+export type BackButtonProps = {
+    position: {top: number; left: number};
+}
+
 
 const BackButton: React.FC<BackButtonProps> = ({
     position,

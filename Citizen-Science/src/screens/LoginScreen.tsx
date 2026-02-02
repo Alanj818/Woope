@@ -12,7 +12,6 @@ import ScreenTitle from "../components/ScreenTitle";
 import { responsiveFontSize, responsiveHeight, responsiveWidth } from "react-native-responsive-dimensions";
 import Blobs from "../components/Blobs";
 import { loginUser } from "../api/auth";
-//import {storeToken} from "../util/token"
 import { AuthContext } from "../util/AuthContext";
 import { storeToken } from '../util/token';
 

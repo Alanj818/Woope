@@ -1,22 +1,30 @@
-import {SafeAreaView, Text, StyleSheet, Dimensions} from "react-native";
+import { SafeAreaView, Text, StyleSheet, Dimensions } from "react-native";
 import styles from "../StyleSheet";
 import React from "react";
-import {LogoNameProps} from "../types";
-import {responsiveFontSize} from "react-native-responsive-dimensions";
+import { responsiveFontSize } from "react-native-responsive-dimensions";
 
 const { height, width } = Dimensions.get('window');
+
+
+export type LogoNameProps = {
+    position: 'topLeft' | 'bottomRight' ;
+    color: string;
+};
+
+
+
 const LogoName: React.FC<LogoNameProps> = ({
-                                               position,
-                                               color
-                                            }) => {
-    return(
+    position,
+    color
+}) => {
+    return (
         <SafeAreaView style={[
             logoStyles.container,
             logoStyles[position]]}>
             <Text style={[
                 styles.title,
-                {color: color},
-                {fontSize: responsiveFontSize(2)}]}>
+                { color: color },
+                { fontSize: responsiveFontSize(2) }]}>
                 WÓOPH̆E
             </Text>
         </SafeAreaView>
@@ -24,6 +32,8 @@ const LogoName: React.FC<LogoNameProps> = ({
     )
 }
 export default LogoName;
+
+
 
 const logoStyles = StyleSheet.create({
     container: {

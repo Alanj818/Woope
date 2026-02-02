@@ -7,12 +7,16 @@ import {
 import IconButton from "./IconButton";
 import React from "react";
 
+import { usePalette} from '../theme/paletteController'
+
 interface ScreenHeaderProps {
 	title: string;
 	navigation: any;
 }
 
-const ScreenHeader: React.FC<ScreenHeaderProps> = ({ title, navigation }) => {
+const ScreenHeader: React.FC<ScreenHeaderProps> = ({ navigation }) => {
+	const { theme } = usePalette();
+
 	return (
 		<SafeAreaView
 		style={{ backgroundColor: "transparent" }}
@@ -22,7 +26,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({ title, navigation }) => {
 					styles.container,
 					{
 						zIndex: 2,
-						backgroundColor: "lightblue",
+						backgroundColor: theme.main,
 						height: responsiveHeight(8),
 					},
 				]}
@@ -38,16 +42,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({ title, navigation }) => {
 					paddingHorizontal={responsiveHeight(1)}
 				></IconButton>
 
-				{/* <IconButton
-					iconName={"person"}
-					onPress={() => nav.navigate("EventHome")}
-					iconSize={responsiveHeight(4.5)}
-					iconColor={"black"}
-					paddingVertical={responsiveHeight(1)}
-					paddingHorizontal={responsiveHeight(1)}
-				/> */}
-
-				{/* Maybe Add title */}
+				
 			</View>
 		</SafeAreaView>
 	);

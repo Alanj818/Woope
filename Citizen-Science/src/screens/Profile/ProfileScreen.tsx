@@ -22,7 +22,6 @@ import {
   unfollowProfile,
 } from "../../api/community";
 import React, { useCallback, useContext, useEffect, useState } from "react";
-import IconButton from "../../components/IconButton";
 
 import { jwtDecode } from "jwt-decode";
 import { AccessToken } from "../../util/token";

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { createPinNew, getAllPinsNew, deletePinNew, updatePinNew } from '../../api/pins';
-import {fetchPurpleAirData} from './purpleair'
+import {fetchPurpleAirData} from '../../api/purpleair'
 
 import {
 	View,
@@ -100,6 +100,7 @@ export const MapScreen = () => {
 		{ label: 'Workshop', value: 'Workshop' },
 		{ label: 'Hazard', value: 'Hazard' },
 		{ label: 'Mutual Aid', value: 'Mutual Aid' },
+		{ label: 'Nasa', value: 'Nasa'}
 	]);
 
 

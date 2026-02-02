@@ -13,8 +13,8 @@ import {
   deleteComment,
   likeComment,
   unlikeComment,
-} from "../api/comments";
-import { Comment } from "../api/types";
+} from "../../api/comments";
+import { Comment } from "../../api/types";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 
 interface CommentsProps {

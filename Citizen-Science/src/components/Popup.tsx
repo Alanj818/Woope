@@ -1,7 +1,13 @@
 import React from 'react';
 import { Modal, Text, View, StyleSheet } from 'react-native';
-import { PopupProps } from '../types';
 import CustomButton from '../components/CustomButton';
+
+export type PopupProps = {
+    isVisible: boolean;
+    message: string;
+    onClose: () => void;
+};
+
 
 const Popup: React.FC<PopupProps> = ({ isVisible, message, onClose }) => {
     return (

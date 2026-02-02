@@ -16,7 +16,7 @@ import {
   SafeAreaView,
   Switch,
 } from "react-native";
-import { AuthContext } from "../util/AuthContext";
+import { AuthContext } from "../../util/AuthContext";
 import { jwtDecode } from "jwt-decode";
 import "core-js/stable/atob";
 import { AccessToken, deleteToken } from "../util/token";
@@ -26,13 +26,13 @@ import { KeyboardAwareFlatList } from "react-native-keyboard-aware-scroll-view";
 import * as DocumentPicker from "expo-document-picker";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as Sharing from "expo-sharing";
-import Comments from "../components/Comments";
-import LikeButton from "../components/LikeButton";
+import Comments from "./Comments";
+import LikeButton from "../../components/LikeButton";
 import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
 } from "react-native-responsive-screen";
-import Weather from "../components/weather";
+import Weather from "./weather";
 import {
   createPost,
   getAllPosts,
@@ -42,7 +42,7 @@ import {
   unlikePost,
   getPostLikes,
   getUserLikedPosts,
-} from "../api/posts";
+} from "../../api/posts";
 import {
   createComment,
   deleteComment,
@@ -50,11 +50,14 @@ import {
   likeComment,
   unlikeComment,
   getComments,
-} from "../api/comments";
-import { PdfFile, Post, Comment, PostWithUsername } from "../api/types";
-import WelcomeBanner from "../components/WelcomeBanner";
-import FixedSwitch from "../components/FixedSwitch";
-import { logActivity } from "../api/activity";
+} from "../../api/comments";
+import { PdfFile, Post, Comment, PostWithUsername } from "../../api/types";
+import WelcomeBanner from "../../components/WelcomeBanner";
+import FixedSwitch from "../../components/FixedSwitch";
+import { logActivity } from "../../api/activity";
+
+
+
 const HomeScreen = () => {
   const { userToken, setUserToken } = useContext(AuthContext);
   const [data, setData] = useState(null);

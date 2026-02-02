@@ -1,15 +1,17 @@
-import React, {useState, Fragment, useCallback, useMemo, useRef, useEffect, useContext} from 'react';
-import {StyleSheet, View, ScrollView, Text, TouchableOpacity, Button, Dimensions} from 'react-native';
-import {Calendar, CalendarUtils} from 'react-native-calendars';
+import React, {useState,  useCallback, useEffect, useContext} from 'react';
+import {StyleSheet, View, Text, TouchableOpacity, Button, Dimensions} from 'react-native';
+import {Calendar} from 'react-native-calendars';
 import { useFocusEffect } from '@react-navigation/native';
 import { getDates, getFollowedDates, getUserDates } from '../../api/event';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { addMonths, DateArg, getDay, getMonth, subMonths, fromUnixTime, addDays} from 'date-fns';
+import { addMonths, getDay, getMonth, subMonths, fromUnixTime, addDays} from 'date-fns';
 import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../../util/AuthContext';
 import { jwtDecode } from 'jwt-decode';
 import { AccessToken } from '../../util/token';
 import CreateUserEvent from './CreateUserEvent';
+
+import ScreenHeader from '../../components/ScreenHeader';
 
 interface Arguments {
   marked: boolean;
@@ -137,6 +139,19 @@ const CalendarScreen = () => {
 
   return (
     <SafeAreaView>
+      <ScreenHeader navigation={null} />
+
+      <View>
+        <Text style={styles.headerTile}> My Calendar </Text>
+
+        <TouchableOpacity style={styles.headerButton} onPress={() => console.log('Button pressed')}>
+          <Text style={styles.headerButtonText}>+</Text>
+        </TouchableOpacity>
+
+
+      </View>
+
+      {/* calendar */}
       <View style={styles.container}> 
         <View style={styles.calendarContainer}>
             <Calendar
@@ -157,13 +172,15 @@ const CalendarScreen = () => {
                 markedDates={marks}
               />
           </View>
-        <TouchableOpacity style={styles.postBox} onPress={() => setModalVisible(true)}>
+
+        {/* <TouchableOpacity style={styles.postBox} onPress={() => setModalVisible(true)}>
           <View style={styles.postBoxInner}>
             <Text style={styles.postBoxText}>
                   Create Personal Event
             </Text>
           </View>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
+
       </View>
       <CreateUserEvent user_id={userId} isVisible={modalVisible} onClose={() => setModalVisible(false)} />
     </SafeAreaView>
@@ -174,6 +191,9 @@ export default CalendarScreen;
 const screenWidth = Dimensions.get('window').width;
 const screenHeight = Dimensions.get('window').height;
 const styles = StyleSheet.create({
+  text:{
+    fontFamily: "Inter-Regular",
+  },
   container: {
     height: screenHeight,
     width: screenWidth,
@@ -245,5 +265,33 @@ postBoxText: {
     borderRadius: 18,
     overflow: "hidden",
     textAlign: "center",
-}
+},
+ header: {
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    backgroundColor: '#fff',
+  },
+
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+
+  headerButton: {
+    position: 'absolute',
+    right: 16,
+    padding: 8,
+  },
+
+  headerButtonText: {
+    fontSize: 22,
+    fontWeight: '600',
+  },
+
 });

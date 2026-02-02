@@ -7,7 +7,7 @@ import {
 import React, { useContext } from "react";
 import { getHeaderTitle } from "@react-navigation/elements";
 import ScreenHeader from "./ScreenHeader";
-import HomeScreen from "../screens/HomeScreen";
+import HomeScreen from "../screens/Home/HomeScreen";
 import { View } from "react-native";
 import {
   DrawerNavigationHelpers,
@@ -46,10 +46,7 @@ const Stack = createNativeStackNavigator();
 
 const SearchStackNavigator = ({ ...props }) => {
   return (
-    <Stack.Navigator
-      initialRouteName={"SearchPage"}
-      screenOptions={{ headerShown: false }}
-    >
+    <Stack.Navigator initialRouteName={"SearchPage"} screenOptions={{ headerShown: false }}>
       <Stack.Screen
         name={"SearchPage"}
         initialParams={{ headerShown: false }}
@@ -78,19 +75,18 @@ function CommunitySideMenu() {
           header: ({ navigation, route, options }) => {
             const title = getHeaderTitle(options, route.name);
 
-            return <ScreenHeader title={title} navigation={navigation} />;
+            return <ScreenHeader  navigation={navigation} />;
           },
         }}
         drawerContent={(props) => <CustomDrawerSideMenu {...props} />}
       >
         <Drawer.Screen name="Community Home" component={HomeScreen} />
 
-        <Drawer.Screen
-          name="Profile"
-          children={(props) => (
-            <ProfileStackNavigator {...props} userID={currentUserID} />
+        <Drawer.Screen name="Profile" children={(props) => ( 
+          <ProfileStackNavigator {...props} userID={currentUserID} />
           )}
         />
+        
         <Drawer.Screen
           name="Search"
           component={SearchStackNavigator}

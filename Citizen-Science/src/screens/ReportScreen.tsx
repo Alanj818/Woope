@@ -2,7 +2,7 @@ import React, { useContext, useState } from 'react';
 import { AuthContext } from "../util/AuthContext";
 import { jwtDecode } from "jwt-decode";
 import "core-js/stable/atob";
-import { AccessToken, deleteToken } from "../util/token";
+import { AccessToken} from "../util/token";
 import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { createReport } from '../api/report';
