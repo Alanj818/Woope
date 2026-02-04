@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
-import { mdiHome, mdiTestTube, mdiCalendar, mdiBookshelf, mdiMapMarker, mdiFileDocument } from '@mdi/js';
+import { mdiHome, mdiTestTube, mdiCalendar, mdiBookshelf, mdiMapMarker, mdiAccount } from '@mdi/js';
 import CalendarScreen from '../screens/Calendar/CalendarScreen';
 import CommunitySideMenu from './CommunitySideMenu';
 import { MapScreen } from '../screens/Map/MapScreen';
@@ -21,10 +21,14 @@ import CreateOrganization from '../screens/Organizations/CreateOrganization';
 import CreateCategory from '../screens/Organizations/CreateCategory';
 import FeatureOrganization from '../screens/Organizations/FeatureOrganization';
 import EventHome from '../screens/Events/EventHome';
-import ReportScreen from '../screens/ReportScreen';
+// ...existing code...
+import ProfileStackNavigator from './ProfileStackNav';
 import DateScreen from '../screens/Calendar/DateScreen';
 import OldCalendarScreen from '../screens/OldCalendarScreen'
 import {usePalette} from '../theme/paletteController';
+import { useContext } from 'react';
+import { AuthContext } from '../util/AuthContext';
+import { jwtDecode } from 'jwt-decode';
 
 const Tab = createBottomTabNavigator();
 
@@ -80,6 +84,16 @@ const ResourceStackScreen = () => (
 
 const NavigationBar = () => {
     const {theme} = usePalette();
+    const { userToken } = useContext(AuthContext);
+    let currentUserID: number | undefined = undefined;
+    try {
+        if (userToken) {
+            const decoded: any = jwtDecode(userToken);
+            currentUserID = decoded?.user_id;
+        }
+    } catch (e) {
+        currentUserID = undefined;
+    }
     // shared tab bar style is declared at module scope (TAB_BAR_STYLE)
     return (
         <View style={{ flex: 1 }}>
@@ -101,8 +115,8 @@ const NavigationBar = () => {
                             case 'Map':
                                 IconPath = mdiMapMarker;
                                 break;
-                            case 'Report':
-                                IconPath = mdiFileDocument;
+                            case 'Profile':
+                                IconPath = mdiAccount;
                                 break;
                             default:
                                 IconPath = undefined as any;
@@ -121,7 +135,7 @@ const NavigationBar = () => {
                 <Tab.Screen name="Calendar" component={CalendarScreen} />
                 <Tab.Screen name="Resources" component={ResourceStackScreen} />
                 <Tab.Screen name="Map" component={MapScreen} />
-                <Tab.Screen name="Report" component={ReportScreen} />
+                <Tab.Screen name="Profile" children={(props) => (<ProfileStackNavigator {...props} userID={currentUserID} />)} />
             </Tab.Navigator>
         </View>
     );

@@ -2,6 +2,7 @@ import React from "react";
 
 import ProfileScreen from "../screens/Profile/ProfileScreen";
 import ProfileEditScreen from "../screens/Profile/ProfileEditScreen";
+import ReportScreen from "../screens/ReportScreen";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import ProfileFollowersScreen from "../screens/Profile/ProfileFollowersScreen";
 import ProfileFollowingScreen from "../screens/Profile/ProfileFollowingScreen";
@@ -17,6 +18,10 @@ const ProfileStackNavigator = ({ ...props }) => {
 				name="ProfileScreen"
 				initialParams={{ userID: props.userID }}
 				component={ProfileScreen}
+			/>
+			<Stack.Screen
+				name="ReportScreen"
+				component={ReportScreen}
 			/>
 			<Stack.Screen
 				name="ProfileEditScreen"
