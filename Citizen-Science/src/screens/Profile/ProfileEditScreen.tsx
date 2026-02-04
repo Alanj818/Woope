@@ -192,9 +192,9 @@ const ProfileEditScreen: React.FC<ProfileEditProps> = ({ navigation }) => {
 					{/* New version  added defaultprofile and linked url for profile pic*/}
 					<Image
 						source={
-							imageUrl
-								? { uri: imageUrl }
-								: {uri:'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png'}
+								// imageUrl
+								// ? { uri: imageUrl }
+								{uri:'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png'}
 						}
 						style={{ width: responsiveHeight(11), height: responsiveHeight(11), borderRadius: responsiveHeight(11) / 2 }}
 						resizeMode="cover"

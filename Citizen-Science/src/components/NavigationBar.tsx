@@ -24,8 +24,18 @@ import EventHome from '../screens/Events/EventHome';
 import ReportScreen from '../screens/ReportScreen';
 import DateScreen from '../screens/Calendar/DateScreen';
 import OldCalendarScreen from '../screens/OldCalendarScreen'
+import {usePalette} from '../theme/paletteController';
 
 const Tab = createBottomTabNavigator();
+
+export const TAB_BAR_STYLE = {
+    backgroundColor: '#ffffff',
+    paddingBottom: 13,
+    paddingTop: 2,
+    height: 80,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+};
 interface AnimatedTabIconProps {
     focused: boolean;
     IconPath: string;
@@ -69,6 +79,8 @@ const ResourceStackScreen = () => (
 )
 
 const NavigationBar = () => {
+    const {theme} = usePalette();
+    // shared tab bar style is declared at module scope (TAB_BAR_STYLE)
     return (
         <View style={{ flex: 1 }}>
             <Tab.Navigator
@@ -93,21 +105,13 @@ const NavigationBar = () => {
                                 IconPath = mdiFileDocument;
                                 break;
                             default:
-                                IconPath = mdiHome;
+                                IconPath = undefined as any;
                         }
                         return <AnimatedTabIcon focused={focused} IconPath={IconPath} />;
                     },
                     tabBarActiveTintColor: 'blue',
                     tabBarInactiveTintColor: 'black',
-                    tabBarStyle:{
-                        backgroundColor: 'lightblue',
-                        paddingBottom: 13,
-                        paddingTop: 2,
-                        height: 80,
-                        borderTopLeftRadius: 20,
-                        borderTopRightRadius: 20,
-
-                    },
+                    tabBarStyle: TAB_BAR_STYLE,
                     tabBarLabelStyle: {
                         marginBottom: 3,
                     },

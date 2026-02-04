@@ -1,9 +1,21 @@
 // CustomButton.tsx
 import React from 'react';
 import { TouchableOpacity, Text, ViewStyle } from 'react-native';
-import { ButtonProps } from '../types';
 import styles from '../StyleSheet';
 import {responsiveHeight, responsiveWidth} from "react-native-responsive-dimensions";
+
+type ButtonProps = {
+    size: { width: number; height: number };
+    label: string;
+    labelColor: string;
+    backgroundColor?: string;
+    onPress: () => void;
+    position: { top: number; left: number};
+    borderRadius?: number;
+    borderColor?: string;
+    borderWidth?: number;
+    disabled?: boolean;
+};
 
 const CustomButton: React.FC<ButtonProps> = ({
     size,

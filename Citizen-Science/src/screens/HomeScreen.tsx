@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState, useRef } from "react";
-import { LayoutAnimation, Platform, UIManager } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import {
   StyleSheet,
   Image,
@@ -16,6 +16,9 @@ import {
   Button,
   SafeAreaView,
   Switch,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from "react-native";
 import { AuthContext } from "../util/AuthContext";
 import { jwtDecode } from "jwt-decode";
@@ -34,6 +37,9 @@ import {
   heightPercentageToDP as hp,
 } from "react-native-responsive-screen";
 import Weather from "../components/weather";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import TopNav from '../components/TopNav';
 import {
   createPost,
   getAllPosts,
@@ -54,17 +60,23 @@ import {
   getComments,
 } from "../api/comments";
 import { PdfFile, Post, Comment, PostWithUsername } from "../api/types";
-import WelcomeBanner from "../components/WelcomeBanner";
-import PostComposer from "../components/PostComposer";
+// WelcomeBanner removed to avoid the pale blue top strip
 import FixedSwitch from "../components/FixedSwitch";
 import { logActivity } from "../api/activity";
 const HomeScreen = () => {
+  const insets = useSafeAreaInsets();
   const { userToken, setUserToken } = useContext(AuthContext);
   const [data, setData] = useState(null);
   const decodedToken = userToken ? jwtDecode<AccessToken>(userToken) : null;
-  const userPermissions = decodedToken ? decodedToken.permissions : {};
-  const userCanDeleteAllPosts = Boolean(userPermissions?.delete_all_posts);
-  const userCanEditAllPosts = Boolean(userPermissions?.edit_all_posts);
+  const userPermissions = decodedToken
+    ? (decodedToken?.permissions)
+    : null;
+  const userCanDeleteAllPosts = userPermissions
+    ? userPermissions.delete_all_posts
+    : false;
+  const userCanEditAllPosts = userPermissions
+    ? userPermissions.edit_all_posts
+    : false;
   const userName = decodedToken
     ? decodedToken.firstName + " " + decodedToken.lastName
     : null;
@@ -73,12 +85,6 @@ const HomeScreen = () => {
   const userId = decodedToken ? decodedToken.user_id : NaN;
   const [postAsOrganization, setPostAsOrganization] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
-  // enable LayoutAnimation on Android
-  useEffect(() => {
-    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-      UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
-  }, []);
   const [postText, setPostText] = useState("");
   const [postImages, setPostImages] = useState<string[]>([]);
   const [posts, setPosts] = useState<PostWithUsername[]>([]);
@@ -97,6 +103,58 @@ const HomeScreen = () => {
   const [modalY] = useState(new Animated.Value(0));
   const [refreshing, setRefreshing] = useState(false);
   const postTextInputRef = useRef<TextInput>(null);
+  const navigation: any = useNavigation();
+
+  // Helper to navigate using the top-most navigator so nested/sibling routes are reachable
+  const navigateToTop = (name: string, params?: any) => {
+    // Walk up the navigator tree and call navigate on the first parent that declares the route name
+    try {
+      let nav: any = navigation as any;
+      while (nav) {
+        try {
+          const state = nav.getState && nav.getState();
+          const names: string[] = state && state.routeNames ? state.routeNames : [];
+          if (names && names.includes(name)) {
+            nav.navigate(name, params);
+            return;
+          }
+        } catch (e) {
+          // ignore and continue
+        }
+
+        const parent = nav.getParent && nav.getParent();
+        if (!parent) break;
+        nav = parent;
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    // As a last resort, attempt nested navigation via the 'Home' tab (common case), then fallback to current
+    try {
+      (navigation as any).navigate('Home', { screen: name, params });
+      return;
+    } catch (e) {
+      // fallback to current navigation
+      (navigation as any).navigate(name, params);
+    }
+  };
+
+  // Guarded click handler for post items to avoid crashing in navigator resolution
+  const handlePostPress = (item: PostWithUsername) => {
+    try {
+      // try to navigate to PostDetail safely
+      navigateToTop('PostDetail', { post: item, comments: commentsMap[item.post_id] || [], userId });
+    } catch (err) {
+      console.warn('Failed to navigate to PostDetail:', err);
+      try {
+        // fallback: navigate using current navigation
+        (navigation as any).navigate('PostDetail', { post: item, comments: commentsMap[item.post_id] || [], userId });
+      } catch (e) {
+        console.warn('Fallback navigate also failed:', e);
+      }
+    }
+  };
 
   interface CommentsMap {
     [key: number]: Comment[];
@@ -106,6 +164,30 @@ const HomeScreen = () => {
     fetchPosts();
     logActivity(userId, `Navigated to Home Screen`)
   }, []);
+
+  // enable LayoutAnimation on Android
+  useEffect(() => {
+    if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+      // @ts-ignore
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
+
+  // focus the post input and animate layout when composer opens
+  useEffect(() => {
+    try {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    } catch (e) {
+      // ignore if not available
+    }
+
+    if (isPosting) {
+      // small delay to ensure layout is applied before focusing
+      setTimeout(() => {
+        postTextInputRef.current?.focus();
+      }, 80);
+    }
+  }, [isPosting]);
 
 
   const fetchPosts = async () => {
@@ -131,24 +213,6 @@ const HomeScreen = () => {
     await fetchPosts();
     setRefreshing(false);
     await logActivity(userId, `Refreshed post feed.`)
-  };
-
-  useEffect(() => {
-    // animate layout changes only to avoid flicker
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-  }, [isPosting]);
-
-  const openComposer = () => {
-    setIsPosting(true);
-  };
-
-  const closeComposer = () => {
-    setIsPosting(false);
-    setIsEditing(false);
-    setEditingPostId(null);
-    setPostText('');
-    setPostImages([]);
-    setPostPdfs([]);
   };
 
   const pickImage = async () => {
@@ -427,8 +491,8 @@ const HomeScreen = () => {
 
   return (
     <>
-      <WelcomeBanner />
-      <SafeAreaView style={styles.flexContainer}>
+      <TopNav title="Home" />
+      <SafeAreaView style={[styles.flexContainer, { backgroundColor: '#ffffff' }]}>
         {userPermissions.create_org_posts && userOrgId && (
           <FixedSwitch
             onValueChange={togglePostAsOrg}
@@ -437,171 +501,136 @@ const HomeScreen = () => {
         )}
         {data && <Text>{JSON.stringify(data, null, 2)}</Text>}
         <KeyboardAwareFlatList
+          style={{ backgroundColor: '#ffffff' }}
           data={posts}
           keyExtractor={(item) => item.post_id.toString()}
           refreshing={refreshing}
           onRefresh={onRefresh}
+          contentContainerStyle={[{ paddingBottom: insets.bottom + 10, backgroundColor: '#ffffff' }]}
           renderItem={({ item }) => (
-
-            <View style={styles.post}>
+            <TouchableOpacity onPress={() => handlePostPress(item)}>
+              <View style={styles.post}>
               <View style={styles.headerRow}>
-                  <Image
-                  source={
-                    item.image_url
-                      ? { uri: `${process.env.EXPO_PUBLIC_API_URL}${item.image_url}` }
-                      : { uri: 'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png' }
-                  }
+                <Image
+                  source={{
+                    uri:
+                      (item as any)?.user_avatar_url ||
+                      "https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png",
+                  }}
                   style={styles.avatar}
-/>
+                />
                 <View style={styles.headerTextContainer}>
                   <Text style={styles.userName}>{item.userName}</Text>
                   <Text style={styles.timestamp}>
-                    {new Date(item.created_at).toLocaleDateString()} at{" "}
                     {new Date(item.created_at).toLocaleTimeString()}
                   </Text>
                 </View>
               </View>
-              {isEditing && editingPostId === item.post_id ? (
-                <View style={{ width: '100%' }}>
-                  <TextInput
-                    style={[styles.input, { marginBottom: 8 }]}
-                    value={postText}
-                    onChangeText={setPostText}
-                    multiline
-                    numberOfLines={3}
-                  />
-                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-                    <TouchableOpacity
-                      style={[styles.postButton, { backgroundColor: '#ccc', marginRight: 8 }]}
-                      onPress={() => {
-                        setIsEditing(false);
-                        setEditingPostId(null);
-                        setPostText('');
-                      }}
-                    >
-                      <Text style={[styles.postButtonText, { color: '#333' }]}>Cancel</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.postButton}
-                      onPress={handleUpdatePost}
-                    >
-                      <Text style={styles.postButtonText}>Save</Text>
-                    </TouchableOpacity>
-                  </View>
+
+              {item.content && <Text style={styles.postText}>{item.content}</Text>}
+
+              <View style={styles.commentButton}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <MaterialIcons name="comment" size={18} color="#007AFF" />
+                  <Text style={{ color: "#6b7280", marginLeft: 6, marginRight: 8, fontSize: 15 }}>
+                    {(commentsMap[item.post_id] || []).length}
+                  </Text>
                 </View>
-              ) : (
-                item.content && (
-                  <Text style={styles.postText}>{item.content}</Text>
-                )
-              )}
-              {item.image?.length > 0 && (
-                <FlatList
-                  data={item.image}
-                  keyExtractor={(item, index) => index.toString()}
-                  renderItem={({ item: uri }) => (
-                    <TouchableOpacity onPress={() => handleImagePress(uri)}>
-                      <Image source={{ uri }} style={styles.fullWidthImage} />
-                    </TouchableOpacity>
-                  )}
-                  horizontal
-                  pagingEnabled={true}
-                  showsHorizontalScrollIndicator={false}
-                  snapToAlignment="center"
-                  snapToInterval={Dimensions.get("window").width}
-                />
-              )}
-              {item.pdfs?.map((pdf: PdfFile, index: number) => (
-                <View key={pdf.uri} style={styles.pdfItem}>
-                  {" "}
-                  // Make sure pdf.uri is unique
-                  <TouchableOpacity onPress={() => handleOpenPdf(pdf.uri)}>
-                    <MaterialIcons
-                      name="picture-as-pdf"
-                      size={24}
-                      color="red"
-                    />
-                    <Text style={styles.pdfName}>{pdf.name}</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
-              <TouchableOpacity
-                onPress={() => toggleCommentsModal(item)}
-                style={styles.commentButton}
-              >
                 <LikeButton
                   postId={item.post_id}
                   user_id={userId}
                   initialLikesCount={item.likes_count}
                   likedPost={item.user_liked}
+                  onToggle={(id, liked, likesCount) => {
+                    setPosts((current) => current.map((p) => p.post_id === id ? { ...p, user_liked: liked, likes_count: likesCount } : p));
+                    // if modal is open and selectedPost matches, update it too
+                    if (selectedPost && selectedPost.post_id === id) {
+                      setSelectedPost({ ...selectedPost, user_liked: liked, likes_count: likesCount } as any);
+                    }
+                  }}
                 />
-                <MaterialIcons name="comment" size={24} color="#007AFF" />
-                <Text style={{ color: "#007AFF", marginLeft: 4 }}>
-                  {(commentsMap[item.post_id] || []).length}
-                </Text>
-              </TouchableOpacity>
-              {userCanModifyPost(item) && (
-                <TouchableOpacity
-                  onPress={() =>
-                    setVisibleDropdown(
-                      visibleDropdown === item.post_id ? null : item.post_id
-                    )
-                  }
-                  style={styles.dropdownIcon}
-                >
-                  <Text>...</Text>
-                </TouchableOpacity>
-              )}
-              {visibleDropdown === item.post_id && (
-                <View style={styles.dropdownMenu}>
-                  {userCanEditPost(item) && (
-                    <TouchableOpacity
-                      onPress={() => startEditingPost(item.post_id)}
-                    >
-                      <Text style={styles.dropdownItem}>Edit</Text>
-                    </TouchableOpacity>
-                  )}
-                  {userCanDeletePost(item) && (
-                    <TouchableOpacity
-                      onPress={() => {
-                        handleDeletePost(item);
-                      }}
-                    >
-                      <Text style={styles.dropdownItem}>Delete</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              )}
-            </View>
+              </View>
+              </View>
+            </TouchableOpacity>
           )}
           ListHeaderComponent={
             <>
               <Weather />
-              <View style={styles.listCard}>
+              <TouchableOpacity
+                style={styles.listCard}
+                onPress={() => setIsPosting(true)}
+                activeOpacity={0.92}
+              >
                 <View style={styles.listCardInner}>
                   {!isPosting ? (
-                    <TouchableOpacity style={{ flex: 1 }} onPress={openComposer}>
-                      <Text style={[styles.listCardText, { fontSize: 18 }]}>What's on your mind?</Text>
-                    </TouchableOpacity>
+                    <>
+                      <Text style={styles.listCardText}>What's on your mind?</Text>
+                    </>
                   ) : (
-                    <View style={{ flex: 1 }}>
-                      <PostComposer
-                        text={postText}
-                        setText={setPostText}
-                        images={postImages}
-                        pdfs={postPdfs}
-                        pickImage={pickImage}
-                        pickPdf={pickPdf}
-                        onSubmit={isEditing ? handleUpdatePost : handleCreatePost}
-                        onCancel={() => {
-                          closeComposer();
-                        }}
-                        isEditing={isEditing}
-                        error={error}
+                    <View style={{ width: '100%' }}>
+                      <TextInput
+                        ref={postTextInputRef}
+                        style={[styles.input, { marginBottom: 8 }]}
+                        placeholder="What's on your mind?"
+                        placeholderTextColor="#0D2538"
+                        value={postText}
+                        onChangeText={setPostText}
+                        multiline
+                        numberOfLines={4}
                       />
+                      <View style={styles.iconsContainer}>
+                        <TouchableOpacity onPress={pickImage}>
+                          <Text>🖼️</Text>
+                        </TouchableOpacity>
+                        {postImages.map((uri, index) => (
+                          <View key={index}>
+                            <Text style={styles.previewLabel}>Image {index + 1}</Text>
+                          </View>
+                        ))}
+                        <TouchableOpacity onPress={pickPdf}>
+                          <Text>📄</Text>
+                        </TouchableOpacity>
+                        {postPdfs.map((pdf, index) => (
+                          <View key={index}>
+                            <Text style={styles.previewLabel}>
+                              PDF {index + 1}: {pdf.name}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                      {postImages.map((uri, index) => (
+                        <Image
+                          key={index}
+                          source={{ uri }}
+                          style={styles.previewImage}
+                        />
+                      ))}
+                      <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+                        <TouchableOpacity
+                          style={[styles.postButtonSmall, { backgroundColor: '#ccc', marginRight: 8 }]}
+                          onPress={() => {
+                            setIsPosting(false);
+                            setPostText('');
+                            setPostImages([]);
+                            setPostPdfs([]);
+                            setIsEditing(false);
+                            setEditingPostId(null);
+                          }}
+                        >
+                          <Text style={[styles.postButtonTextSmall, { color: '#333' }]}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.postButtonSmall}
+                          onPress={isEditing ? handleUpdatePost : handleCreatePost}
+                        >
+                          <Text style={styles.postButtonTextSmall}>{isEditing ? 'UPDATE' : 'POST'}</Text>
+                        </TouchableOpacity>
+                      </View>
+                      {error ? <Text style={styles.errorText}>{error}</Text> : null}
                     </View>
                   )}
                 </View>
-              </View>
+              </TouchableOpacity>
             </>
           }
           showsVerticalScrollIndicator={false}
@@ -635,24 +664,70 @@ const HomeScreen = () => {
         >
           <View style={styles.centeredView}>
             <View style={styles.modalView}>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => toggleCommentsModal()}
-              >
-                <Text style={styles.closeButtonText}>X</Text>
-              </TouchableOpacity>
+              {/* Use TopNav as the modal header so the post view matches list format */}
               {selectedPost && (
-                <Comments
-                  comments={commentsMap[selectedPost.post_id] || []}
-                  postUserId={selectedPost.user_id}
-                  postId={selectedPost.post_id}
-                  userId={userId}
-                  orgId={postAsOrganization ? userOrgId : NaN}
-                  onAddComment={handleAddComment}
-                  onDeleteComment={handleDeleteComment}
-                  onLikeComment={handleLikeComment}
-                  onUnlikeComment={handleUnlikeComment}
-                />
+                <>
+                  <TopNav title="" showBack={true} onBack={() => toggleCommentsModal()} />
+                  <View style={{ padding: 16, backgroundColor: '#fff' }}>
+                    <View style={styles.headerRow}>
+                      <Image
+                        source={{ uri: (selectedPost as any).user_avatar_url || 'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png' }}
+                        style={styles.avatar}
+                      />
+                      <View style={styles.headerTextContainer}>
+                        <Text style={styles.userName}>{selectedPost.userName}</Text>
+                        <Text style={styles.timestamp}>{
+                          (() => {
+                            const raw = (selectedPost as any).created_at ?? (selectedPost as any).timestamp ?? '';
+                            try {
+                              if (!raw) return '';
+                              const d = new Date(raw);
+                              if (isNaN(d.getTime())) return '';
+                              return d.toLocaleTimeString();
+                            } catch (e) {
+                              return '';
+                            }
+                          })()
+                        }</Text>
+                      </View>
+                    </View>
+
+                    {selectedPost.content && <Text style={styles.postText}>{selectedPost.content}</Text>}
+
+                    <View style={[styles.commentButton, { marginTop: 12 }]}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <MaterialIcons name="comment" size={18} color="#007AFF" />
+                        <Text style={{ color: "#6b7280", marginLeft: 6, marginRight: 8, fontSize: 15 }}>
+                          {(commentsMap[selectedPost.post_id] || []).length}
+                        </Text>
+                      </View>
+                      <LikeButton
+                        postId={selectedPost.post_id}
+                        user_id={userId}
+                        initialLikesCount={selectedPost.likes_count}
+                        likedPost={(selectedPost as any).user_liked ?? selectedPost.likedPost}
+                        onToggle={(id, liked, likesCount) => {
+                          setPosts((current) => current.map((p) => p.post_id === id ? { ...p, user_liked: liked, likes_count: likesCount } : p));
+                          setSelectedPost({ ...selectedPost, user_liked: liked, likes_count: likesCount } as any);
+                        }}
+                      />
+                    </View>
+
+                    <View style={{ flex: 1 }}>
+                      <Comments
+                        comments={commentsMap[selectedPost.post_id] || []}
+                        postUserId={selectedPost.user_id}
+                        postId={selectedPost.post_id}
+                        userId={userId}
+                        orgId={postAsOrganization ? userOrgId : NaN}
+                        onAddComment={handleAddComment}
+                        onDeleteComment={handleDeleteComment}
+                        onLikeComment={handleLikeComment}
+                        onUnlikeComment={handleUnlikeComment}
+                      />
+                    </View>
+                  </View>
+                </>
               )}
             </View>
           </View>
@@ -665,7 +740,10 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   flexContainer: {
     flex: 1,
-    padding: 22,
+  paddingHorizontal: 22,
+  paddingTop: 0,
+  paddingBottom: 22,
+  backgroundColor: '#ffffff',
   },
   postBox: {
     backgroundColor: "#B4D7EE",
@@ -703,48 +781,12 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     textAlign: "center",
   },
-  /* Resource-style list card used for the post prompt to match Resources tab */
-  listCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
-    marginHorizontal: 10,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#DCEFFE',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.09,
-    shadowRadius: 6,
-    elevation: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  listCardInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%'
-  },
-  listCardText: {
-    fontSize: 18,
-    color: '#0D2538',
-    textAlign: 'left',
-    flex: 1,
-    paddingLeft: 4,
-  },
-  chevron: {
-    color: '#4A90E2',
-    fontSize: 22,
-    paddingLeft: 8,
-  },
   inputContainer: {
-    width: "90%",
-    alignSelf: "center",
-    paddingHorizontal: 15,
-    paddingVertical: 20,
-    borderRadius: 10,
+  width: "90%",
+  alignSelf: "center",
+  paddingHorizontal: 12,
+  paddingVertical: 16,
+  borderRadius: 8,
     backgroundColor: "#FFFFFF",
     shadowColor: "#000",
     shadowOffset: {
@@ -758,12 +800,26 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   input: {
-    borderWidth: 1,
-    borderColor: "#D1E3FA",
-    borderRadius: 20,
-    padding: 15,
+  borderWidth: 0,
+  borderColor: "transparent",
+  borderRadius: 10,
+  padding: 12,
+  width: "100%",
+  marginBottom: 10,
+  fontSize: 18,
+  color: '#0D2538',
+  backgroundColor: '#FFFFFF',
+  },
+  editInput: {
+    borderWidth: 0,
+    borderColor: "transparent",
+    borderRadius: 8,
+    padding: 10,
     width: "100%",
-    marginBottom: 10,
+    marginBottom: 8,
+    fontSize: 16,
+    color: '#1c1e21',
+    backgroundColor: '#FFFFFF',
   },
   orgSwitch: {
     alignSelf: "flex-end",
@@ -772,22 +828,38 @@ const styles = StyleSheet.create({
     width: "100%",
     height: undefined,
     aspectRatio: 4 / 3,
-    borderRadius: 10,
+  borderRadius: 8,
     marginBottom: 10,
   },
   postButton: {
-    backgroundColor: "#007AFF",
-    borderRadius: 20,
-    marginTop: 10,
-    width: wp("30%"),
-    alignSelf: "flex-end",
-    paddingVertical: hp("1.5%"),
-    paddingHorizontal: wp("8%"),
+  backgroundColor: "#007AFF",
+  borderRadius: 16,
+  marginTop: 8,
+  width: wp("26%"),
+  alignSelf: "flex-end",
+  paddingVertical: hp("1.2%"),
+  paddingHorizontal: wp("6%"),
   },
   postButtonText: {
+  color: "#FFFFFF",
+  textAlign: "center",
+  fontSize: 15,
+  },
+  postButtonSmall: {
+    backgroundColor: "#007AFF",
+  borderRadius: 14,
+  marginTop: 4,
+  minWidth: wp("24%"),
+  alignSelf: "flex-end",
+  paddingVertical: hp("1.15%"),
+  paddingHorizontal: wp("6%"),
+  alignItems: 'center',
+  justifyContent: 'center',
+  },
+  postButtonTextSmall: {
     color: "#FFFFFF",
     textAlign: "center",
-    fontSize: 16,
+  fontSize: 14,
   },
   iconsContainer: {
     flexDirection: "row",
@@ -797,18 +869,22 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   post: {
-    borderWidth: 1,
-    borderColor: "#ccd0d5",
-    borderRadius: 10,
-    padding: 20,
-    backgroundColor: "#fff",
-    marginBottom: 10,
-    alignItems: "flex-start",
-    width: "100%",
+  backgroundColor: "#fff",
+  paddingVertical: 16,
+  paddingHorizontal: 12,
+  alignSelf: "stretch",
+  width: "100%",
+  marginBottom: 0,
+  borderBottomWidth: 1,
+  borderBottomColor: "#e5e7eb",
   },
   postText: {
-    marginBottom: 10,
-    color: "#1c1e21",
+  marginBottom: 4,
+  color: "#1f2937",
+  fontSize: 16,
+  lineHeight: 24,
+  /* align post text with the username/timestamp (avatar width 44 + avatar marginRight 6 + headerTextContainer marginLeft 6 = 56) */
+  marginLeft: 56,
   },
   postImage: {
     width: 100,
@@ -821,10 +897,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginBottom: 20,
+  width: 44,
+  height: 44,
+  borderRadius: 22,
+  marginBottom: 0,
+  marginRight: 6,
   },
   pdfAttachedText: {
     marginTop: 10,
@@ -838,6 +915,10 @@ const styles = StyleSheet.create({
   },
   pdfName: {
     marginLeft: 10,
+  },
+  previewLabel: {
+    color: '#0D2538',
+    fontSize: 14,
   },
   imagesContainer: {
     flexDirection: "row",
@@ -874,12 +955,14 @@ const styles = StyleSheet.create({
     resizeMode: "contain",
   },
   commentButton: {
-    marginTop: 10,
-    padding: 10,
-    borderRadius: 5,
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "flex-start",
+  marginTop: 2,
+  paddingVertical: 2,
+  paddingHorizontal: 4,
+  borderRadius: 5,
+  alignItems: "center",
+  flexDirection: "row",
+  justifyContent: "flex-end",
+  width: '100%',
   },
   centeredViews: {
     flex: 1,
@@ -887,21 +970,64 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   headerRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 10,
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: 6,
+  },
+  header: {
+    alignItems: 'flex-start',
+    height: 76,
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    width: '100%',
+  marginBottom: 0,
+  },
+  headerInner: {
+    alignItems: 'center',
+    height: 44,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%'
+  },
+  headingWrapper: {
+    height: 44,
+    width: 180,
+    justifyContent: 'center'
+  },
+  heading: {
+    height: 28,
+    justifyContent: 'center'
+  },
+  textWrapper: {
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: '400',
+    lineHeight: 28,
+  },
+  button: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 9999,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  icon: {
+    height: 20,
+    width: 20,
   },
   headerTextContainer: {
-    marginLeft: 10,
+  marginLeft: 6,
     justifyContent: "center",
   },
   userName: {
-    fontSize: 16,
-    marginBottom: 4,
+  fontSize: 16,
+  marginBottom: 4,
+  fontWeight: '600',
   },
   timestamp: {
-    fontSize: 12,
-    color: "#999",
+  fontSize: 12,
+  color: "#9CA3AF",
   },
   dropdownIcon: {
     padding: 10,
@@ -972,6 +1098,53 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "rgba(0, 0, 0, 0.8)",
+  },
+  listCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    marginHorizontal: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#DCEFFE',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.09,
+    shadowRadius: 6,
+    elevation: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listAccent: {
+    width: 6,
+    backgroundColor: '#4A90E2',
+    borderTopLeftRadius: 14,
+    borderBottomLeftRadius: 14,
+    marginRight: 12,
+    height: '100%'
+  },
+  listCardText: {
+    fontSize: 18,
+    color: '#0D2538',
+    textAlign: 'left',
+    flex: 1,
+    paddingLeft: 4,
+  },
+  pressed: {
+    opacity: 0.85,
+    transform: [{ scale: 0.997 }],
+  },
+  listCardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%'
+  },
+  chevron: {
+    color: '#4A90E2',
+    fontSize: 22,
+    paddingLeft: 8,
   },
 });
 export default HomeScreen;

@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 
 const API_KEY = "CEFE17E9-BE6A-11F0-BDE5-4201AC1DC121";
-const SENSOR_ID = ["228143","128333"];
+const SENSOR_ID = ["228143","128333","294503"];
 
 export const fetchPurpleAirData = async () => {
   try { 

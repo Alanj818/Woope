@@ -1,7 +1,11 @@
 import {SafeAreaView, Text, StyleSheet, Dimensions} from "react-native";
 import styles from "../StyleSheet";
 import React from "react";
-import {LogoNameProps} from "../types";
+
+type LogoNameProps = {
+    position: 'topLeft' | 'bottomRight' ;
+    color: string;
+};
 import {responsiveFontSize} from "react-native-responsive-dimensions";
 
 const { height, width } = Dimensions.get('window');
@@ -24,6 +28,7 @@ const LogoName: React.FC<LogoNameProps> = ({
     )
 }
 export default LogoName;
+
 
 const logoStyles = StyleSheet.create({
     container: {
