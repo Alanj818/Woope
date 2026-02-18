@@ -1,13 +1,11 @@
-import React, { useContext, useEffect, useState, useRef } from "react";
-import { useNavigation } from '@react-navigation/native';
+import React, { useContext, useEffect, useState, useCallback } from "react";
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import {
   StyleSheet,
   Image,
   Text,
   View,
   TouchableOpacity,
-  TextInput,
-  Alert,
   FlatList,
   Dimensions,
   Modal,
@@ -25,9 +23,7 @@ import { jwtDecode } from "jwt-decode";
 import "core-js/stable/atob";
 import { AccessToken, deleteToken } from "../util/token";
 import { logoutUser } from "../api/auth";
-import * as ImagePicker from "expo-image-picker";
 import { KeyboardAwareFlatList } from "react-native-keyboard-aware-scroll-view";
-import * as DocumentPicker from "expo-document-picker";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as Sharing from "expo-sharing";
 import Comments from "../components/Comments";
@@ -40,17 +36,15 @@ import Weather from "../components/weather";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopNav from '../components/TopNav';
+import { formatTimeAgo } from '../util/formatTime';
 import {
-  createPost,
   getAllPosts,
-  updatePost,
   deletePost,
   likePost,
   unlikePost,
   getPostLikes,
   getUserLikedPosts,
 } from "../api/posts";
-import { getPostById } from "../api/posts";
 import {
   createComment,
   deleteComment,
@@ -59,10 +53,11 @@ import {
   unlikeComment,
   getComments,
 } from "../api/comments";
-import { PdfFile, Post, Comment, PostWithUsername } from "../api/types";
+import { Comment, PostWithUsername } from "../api/types";
 // WelcomeBanner removed to avoid the pale blue top strip
 import FixedSwitch from "../components/FixedSwitch";
 import { logActivity } from "../api/activity";
+import Popup from '../components/Popup';
 const HomeScreen = () => {
   const insets = useSafeAreaInsets();
   const { userToken, setUserToken } = useContext(AuthContext);
@@ -83,13 +78,8 @@ const HomeScreen = () => {
   const userOrgId = decodedToken ? decodedToken.org_id : null;
   const userOrgName = decodedToken ? decodedToken.org_name : null;
   const userId = decodedToken ? decodedToken.user_id : NaN;
-  const [postAsOrganization, setPostAsOrganization] = useState(false);
-  const [isPosting, setIsPosting] = useState(false);
-  const [postText, setPostText] = useState("");
-  const [postImages, setPostImages] = useState<string[]>([]);
   const [posts, setPosts] = useState<PostWithUsername[]>([]);
   const [error, setError] = useState("");
-  const [postPdfs, setPostPdfs] = useState<PdfFile[]>([]);
   const [isImageViewVisible, setImageViewVisible] = useState(false);
   const [selectedImageUri, setSelectedImageUri] = useState("");
   const [selectedPost, setSelectedPost] = useState<PostWithUsername | null>(
@@ -98,12 +88,18 @@ const HomeScreen = () => {
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   const [commentsMap, setCommentsMap] = useState<CommentsMap>({});
   const [visibleDropdown, setVisibleDropdown] = useState<string | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingPostId, setEditingPostId] = useState<number | null>(null);
+  const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [postPendingDelete, setPostPendingDelete] = useState<PostWithUsername | null>(null);
+  const [postAsOrganization, setPostAsOrganization] = useState(false);
   const [modalY] = useState(new Animated.Value(0));
   const [refreshing, setRefreshing] = useState(false);
-  const postTextInputRef = useRef<TextInput>(null);
+  const [listVersion, setListVersion] = useState(0);
   const navigation: any = useNavigation();
+  const route = useRoute();
+
+  const togglePostAsOrg = (value: boolean) => {
+    setPostAsOrganization(value);
+  };
 
   // Helper to navigate using the top-most navigator so nested/sibling routes are reachable
   const navigateToTop = (name: string, params?: any) => {
@@ -161,9 +157,21 @@ const HomeScreen = () => {
   }
 
   useEffect(() => {
-    fetchPosts();
     logActivity(userId, `Navigated to Home Screen`)
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchPosts();
+    }, [userId])
+  );
+
+  useEffect(() => {
+    const refreshStamp = (route.params as any)?.refreshPosts;
+    if (refreshStamp) {
+      fetchPosts();
+    }
+  }, [(route.params as any)?.refreshPosts]);
 
   // enable LayoutAnimation on Android
   useEffect(() => {
@@ -173,21 +181,6 @@ const HomeScreen = () => {
     }
   }, []);
 
-  // focus the post input and animate layout when composer opens
-  useEffect(() => {
-    try {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    } catch (e) {
-      // ignore if not available
-    }
-
-    if (isPosting) {
-      // small delay to ensure layout is applied before focusing
-      setTimeout(() => {
-        postTextInputRef.current?.focus();
-      }, 80);
-    }
-  }, [isPosting]);
 
 
   const fetchPosts = async () => {
@@ -215,48 +208,6 @@ const HomeScreen = () => {
     await logActivity(userId, `Refreshed post feed.`)
   };
 
-  const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      aspect: [4, 3],
-      quality: 1,
-      allowsMultipleSelection: true,
-    });
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      const uris = result.assets.map((asset) => asset.uri);
-      setPostImages((prevImages) => [...prevImages, ...uris]);
-    }
-  };
-
-  const pickPdf = async () => {
-    try {
-      if (postPdfs.length < 10) {
-        const result = await DocumentPicker.getDocumentAsync({
-          type: "application/pdf",
-          copyToCacheDirectory: true,
-          multiple: true,
-        });
-
-        if (!result.canceled && result.assets) {
-          const newPdfFiles = result.assets.map((asset) => ({
-            uri: asset.uri,
-            name: asset.name || "Unknown Name",
-          }));
-
-          setPostPdfs((prev) => [...prev, ...newPdfFiles]);
-        } else {
-          console.log("No PDF was selected.");
-        }
-      } else {
-        Alert.alert(
-          "Limit Reached",
-          "You can only select up to ten PDF files."
-        );
-      }
-    } catch (error) {
-      console.error("Error picking PDFs:", error);
-    }
-  };
 
   const handleOpenPdf = async (pdfUri: string) => {
     try {
@@ -283,10 +234,6 @@ const HomeScreen = () => {
     logActivity(userId, `Toggled comments modal to ${!commentsModalVisible}`)
   };
 
-  const togglePostAsOrg = () => {
-    setPostAsOrganization(!postAsOrganization);
-    logActivity(userId, `Toggled posting as organization to ${!postAsOrganization}`)
-  };
 
   const handleAddComment = (postId: number, newComment: Comment) => {
     setPosts((posts) =>
@@ -330,101 +277,50 @@ const HomeScreen = () => {
     }
   };
 
-  const startEditingPost = (postId: number) => {
-    const postToEdit = posts.find((post) => post.post_id === postId);
-    if (postToEdit) {
-      console.log("Editing post:", postToEdit);
-      setPostText(postToEdit.content || "");
-      setPostImages(postToEdit.image || []);
-      setPostPdfs(postToEdit.pdfs || []);
-
-      setIsEditing(true);
-      setEditingPostId(postId);
-      setVisibleDropdown(null);
-      if (postTextInputRef.current) {
-        postTextInputRef.current.focus();
-      }
-    } else {
-      console.log("No post found with ID:", postId);
-    }
-  };
-
-  const handleUpdatePost = async () => {
-    if (!editingPostId || !postText.trim()) {
-      alert("Post text cannot be empty.");
-      return;
-    }
-
+  const performDeletePost = async (postToDelete: PostWithUsername) => {
+    if (!userCanDeletePost(postToDelete)) return;
     try {
-      try {
-        await getPostById(editingPostId, setUserToken);
-      } catch (err) {
-        console.error('Post lookup failed before update:', err);
-        setError('Post not found. It may have been deleted.');
-        setIsEditing(false);
-        setEditingPostId(null);
-        setPostText('');
-        return;
+      await deletePost(postToDelete.post_id, setUserToken);
+      setPosts((currentPosts) =>
+        currentPosts.filter((post) => post.post_id !== postToDelete.post_id)
+      );
+      setListVersion((v) => v + 1);
+      setCommentsMap((current) => {
+        const next = { ...current };
+        delete next[postToDelete.post_id];
+        return next;
+      });
+      if (selectedPost && selectedPost.post_id === postToDelete.post_id) {
+        setSelectedPost(null);
+        setCommentsModalVisible(false);
       }
-
-      const updatedPost = await updatePost(editingPostId, postText, setUserToken); // Adjust parameters as needed
-      await logActivity(userId, `User edited post with id ${editingPostId}`);
-      fetchPosts();
-
-      // Reset the form and editing state
-      setIsEditing(false);
-      setEditingPostId(null);
-      setPostText("");
-      setPostImages([]);
-      setPostPdfs([]);
-      setIsPosting(false);
-    } catch (error) {
-  console.error("Failed to update the post:", error);
-    }
-  };
-
-  const handleCreatePost = async () => {
-    setError("");
-    if (!postText.trim()) {
-      setError("Please provide text for your post.");
-      return;
-    } else if (userId === null) {
-      setError("Please login to post.");
-      return;
-    }
-    try {
-      const postOrgId = postAsOrganization ? userOrgId : NaN;
-      await createPost(Number(userId), postOrgId, postText, setUserToken);
-      await logActivity(userId, `User created new post with text: "${postText}"`)
-      fetchPosts();
-
-      // Clear the form
-      setPostText("");
-      setPostImages([]);
-      setPostPdfs([]);
-      setIsPosting(false);
+      await logActivity(userId, `User deleted post with post id ${postToDelete.post_id}`)
+      setRefreshing(true);
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      await fetchPosts();
+      setRefreshing(false);
     } catch (error) {
       console.error(error);
-      setError("Failed to create post. Please try again.");
+      setError("Failed to delete post. Please try again.");
     }
   };
 
-  const handleDeletePost = async (postToDelete: PostWithUsername) => {
+  const handleDeletePost = (postToDelete: PostWithUsername) => {
     setVisibleDropdown(null);
-    if (userCanDeletePost(postToDelete)) {
-      try {
-        deletePost(postToDelete.post_id, setUserToken);
-        await logActivity(userId, `User deleted post with post id ${postToDelete.post_id}`)
-        setPosts((currentPosts) =>
-          currentPosts.filter((post) => post.post_id !== postToDelete.post_id)
-        );
-      } catch (error) {
-        console.error(error);
-        setError("Failed to delete post. Please try again.");
-      } finally {
-        fetchPosts();
-      }
-    }
+    setPostPendingDelete(postToDelete);
+    setDeleteConfirmVisible(true);
+  };
+
+  const confirmDeletePost = async () => {
+    if (!postPendingDelete) return;
+    setDeleteConfirmVisible(false);
+    await performDeletePost(postPendingDelete);
+    setPostPendingDelete(null);
+  };
+
+  const cancelDeletePost = () => {
+    setDeleteConfirmVisible(false);
+    setPostPendingDelete(null);
   };
 
   const userCanModifyPost = (post: PostWithUsername) => {
@@ -492,7 +388,17 @@ const HomeScreen = () => {
   return (
     <>
       <TopNav title="Home" />
-      <SafeAreaView style={[styles.flexContainer, { backgroundColor: '#ffffff' }]}>
+      {/* Search icon button (top-right) */}
+      <TouchableOpacity
+        onPress={() => navigateToTop('Search')}
+        accessibilityLabel="Open search"
+        style={[styles.searchButton, { top: insets.top + 8 }]}
+      >
+        <View style={styles.searchIcon}>
+          <MaterialIcons name="search" size={22} color="#fff" />
+        </View>
+      </TouchableOpacity>
+      <SafeAreaView style={[styles.flexContainer, { backgroundColor: 'transparent', marginTop: 0, paddingTop: 0 }]}>
         {userPermissions.create_org_posts && userOrgId && (
           <FixedSwitch
             onValueChange={togglePostAsOrg}
@@ -501,136 +407,112 @@ const HomeScreen = () => {
         )}
         {data && <Text>{JSON.stringify(data, null, 2)}</Text>}
         <KeyboardAwareFlatList
-          style={{ backgroundColor: '#ffffff' }}
+          style={{ backgroundColor: 'transparent' }}
           data={posts}
+          extraData={listVersion}
           keyExtractor={(item) => item.post_id.toString()}
           refreshing={refreshing}
           onRefresh={onRefresh}
-          contentContainerStyle={[{ paddingBottom: insets.bottom + 10, backgroundColor: '#ffffff' }]}
-          renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => handlePostPress(item)}>
-              <View style={styles.post}>
-              <View style={styles.headerRow}>
-                <Image
-                  source={{
-                    uri:
-                      (item as any)?.user_avatar_url ||
-                      "https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png",
-                  }}
-                  style={styles.avatar}
-                />
-                <View style={styles.headerTextContainer}>
-                  <Text style={styles.userName}>{item.userName}</Text>
-                  <Text style={styles.timestamp}>
-                    {new Date(item.created_at).toLocaleTimeString()}
-                  </Text>
-                </View>
-              </View>
+          contentContainerStyle={[{ paddingTop: 0, paddingBottom: insets.bottom + 10, backgroundColor: 'transparent' }]}
+          renderItem={({ item }) => {
+            const isDropdownOpen = visibleDropdown === item.post_id.toString();
+            return (
+              <TouchableOpacity 
+                onPress={() => isDropdownOpen ? null : handlePostPress(item)}
+                activeOpacity={isDropdownOpen ? 1 : 0.7}
+              >
+                <View style={styles.post}>
+                  <View style={styles.headerRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      <Image
+                        source={{
+                          uri:
+                            (item as any)?.user_avatar_url ||
+                            "https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png",
+                        }}
+                        style={styles.avatar}
+                      />
+                      <View style={styles.headerTextContainer}>
+                        <Text style={styles.userName}>{item.userName}</Text>
+                        <Text style={styles.timestamp}>
+                          {formatTimeAgo(item.created_at)}
+                        </Text>
+                      </View>
+                    </View>
+                    {userCanDeletePost(item) && (
+                      <TouchableOpacity
+                        onPress={() => setVisibleDropdown(visibleDropdown === item.post_id.toString() ? null : item.post_id.toString())}
+                        style={{ padding: 8 }}
+                      >
+                        <MaterialIcons name="more-vert" size={20} color="#6B7280" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  {isDropdownOpen && (
+                    <View style={styles.dropdownMenu}>
+                      <TouchableOpacity
+                        onPress={() => handleDeletePost(item)}
+                        style={styles.dropdownItem}
+                      >
+                        <MaterialIcons name="delete" size={16} color="#e11d48" />
+                        <Text style={styles.dropdownItemText}>Delete post</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
 
-              {item.content && <Text style={styles.postText}>{item.content}</Text>}
+                  {item.content && <Text style={styles.postText}>{item.content}</Text>}
 
-              <View style={styles.commentButton}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <MaterialIcons name="comment" size={18} color="#007AFF" />
-                  <Text style={{ color: "#6b7280", marginLeft: 6, marginRight: 8, fontSize: 15 }}>
-                    {(commentsMap[item.post_id] || []).length}
-                  </Text>
+                  {isDropdownOpen && (
+                    <TouchableOpacity
+                      activeOpacity={1}
+                      onPress={() => setVisibleDropdown(null)}
+                      style={styles.dropdownBackdrop}
+                    />
+                  )}
+
+                  <View style={styles.commentButton}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <MaterialIcons name="comment" size={18} color="#007AFF" />
+                      <Text style={{ color: "#6b7280", marginLeft: 6, marginRight: 8, fontSize: 15 }}>
+                        {(commentsMap[item.post_id] || []).length}
+                      </Text>
+                    </View>
+                    <LikeButton
+                      postId={item.post_id}
+                      user_id={userId}
+                      initialLikesCount={item.likes_count}
+                      likedPost={item.user_liked}
+                      onToggle={(id, liked, likesCount) => {
+                        setPosts((current) => current.map((p) => p.post_id === id ? { ...p, user_liked: liked, likes_count: likesCount } : p));
+                        if (selectedPost && selectedPost.post_id === id) {
+                          setSelectedPost({ ...selectedPost, user_liked: liked, likes_count: likesCount } as any);
+                        }
+                      }}
+                    />
+                  </View>
                 </View>
-                <LikeButton
-                  postId={item.post_id}
-                  user_id={userId}
-                  initialLikesCount={item.likes_count}
-                  likedPost={item.user_liked}
-                  onToggle={(id, liked, likesCount) => {
-                    setPosts((current) => current.map((p) => p.post_id === id ? { ...p, user_liked: liked, likes_count: likesCount } : p));
-                    // if modal is open and selectedPost matches, update it too
-                    if (selectedPost && selectedPost.post_id === id) {
-                      setSelectedPost({ ...selectedPost, user_liked: liked, likes_count: likesCount } as any);
-                    }
-                  }}
-                />
-              </View>
-              </View>
-            </TouchableOpacity>
-          )}
+              </TouchableOpacity>
+            );
+          }}
           ListHeaderComponent={
             <>
               <Weather />
-              <TouchableOpacity
+              <LinearGradient
+                colors={['#0088ca', '#0092b8']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
                 style={styles.listCard}
-                onPress={() => setIsPosting(true)}
-                activeOpacity={0.92}
               >
-                <View style={styles.listCardInner}>
-                  {!isPosting ? (
-                    <>
-                      <Text style={styles.listCardText}>What's on your mind?</Text>
-                    </>
-                  ) : (
-                    <View style={{ width: '100%' }}>
-                      <TextInput
-                        ref={postTextInputRef}
-                        style={[styles.input, { marginBottom: 8 }]}
-                        placeholder="What's on your mind?"
-                        placeholderTextColor="#0D2538"
-                        value={postText}
-                        onChangeText={setPostText}
-                        multiline
-                        numberOfLines={4}
-                      />
-                      <View style={styles.iconsContainer}>
-                        <TouchableOpacity onPress={pickImage}>
-                          <Text>🖼️</Text>
-                        </TouchableOpacity>
-                        {postImages.map((uri, index) => (
-                          <View key={index}>
-                            <Text style={styles.previewLabel}>Image {index + 1}</Text>
-                          </View>
-                        ))}
-                        <TouchableOpacity onPress={pickPdf}>
-                          <Text>📄</Text>
-                        </TouchableOpacity>
-                        {postPdfs.map((pdf, index) => (
-                          <View key={index}>
-                            <Text style={styles.previewLabel}>
-                              PDF {index + 1}: {pdf.name}
-                            </Text>
-                          </View>
-                        ))}
-                      </View>
-                      {postImages.map((uri, index) => (
-                        <Image
-                          key={index}
-                          source={{ uri }}
-                          style={styles.previewImage}
-                        />
-                      ))}
-                      <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-                        <TouchableOpacity
-                          style={[styles.postButtonSmall, { backgroundColor: '#ccc', marginRight: 8 }]}
-                          onPress={() => {
-                            setIsPosting(false);
-                            setPostText('');
-                            setPostImages([]);
-                            setPostPdfs([]);
-                            setIsEditing(false);
-                            setEditingPostId(null);
-                          }}
-                        >
-                          <Text style={[styles.postButtonTextSmall, { color: '#333' }]}>Cancel</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={styles.postButtonSmall}
-                          onPress={isEditing ? handleUpdatePost : handleCreatePost}
-                        >
-                          <Text style={styles.postButtonTextSmall}>{isEditing ? 'UPDATE' : 'POST'}</Text>
-                        </TouchableOpacity>
-                      </View>
-                      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-                    </View>
-                  )}
-                </View>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('CreatePost')}
+                  activeOpacity={0.7}
+                  style={styles.createPostTouchable}
+                >
+                  <View style={styles.listCardInner}>
+                    <Text style={styles.listCardText}>Create Post</Text>
+                  </View>
+                </TouchableOpacity>
+              </LinearGradient>
             </>
           }
           showsVerticalScrollIndicator={false}
@@ -670,27 +552,36 @@ const HomeScreen = () => {
                   <TopNav title="" showBack={true} onBack={() => toggleCommentsModal()} />
                   <View style={{ padding: 16, backgroundColor: '#fff' }}>
                     <View style={styles.headerRow}>
-                      <Image
-                        source={{ uri: (selectedPost as any).user_avatar_url || 'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png' }}
-                        style={styles.avatar}
-                      />
-                      <View style={styles.headerTextContainer}>
-                        <Text style={styles.userName}>{selectedPost.userName}</Text>
-                        <Text style={styles.timestamp}>{
-                          (() => {
-                            const raw = (selectedPost as any).created_at ?? (selectedPost as any).timestamp ?? '';
-                            try {
-                              if (!raw) return '';
-                              const d = new Date(raw);
-                              if (isNaN(d.getTime())) return '';
-                              return d.toLocaleTimeString();
-                            } catch (e) {
-                              return '';
-                            }
-                          })()
-                        }</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                        <Image
+                          source={{ uri: (selectedPost as any).user_avatar_url || 'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png' }}
+                          style={styles.avatar}
+                        />
+                        <View style={styles.headerTextContainer}>
+                          <Text style={styles.userName}>{selectedPost.userName}</Text>
+                          <Text style={styles.timestamp}>{formatTimeAgo((selectedPost as any).created_at ?? (selectedPost as any).timestamp ?? '')}</Text>
+                        </View>
                       </View>
+                      {userCanDeletePost(selectedPost) && (
+                        <TouchableOpacity
+                          onPress={() => setVisibleDropdown(visibleDropdown === selectedPost.post_id.toString() ? null : selectedPost.post_id.toString())}
+                          style={{ padding: 8 }}
+                        >
+                          <MaterialIcons name="more-vert" size={20} color="#6B7280" />
+                        </TouchableOpacity>
+                      )}
                     </View>
+                    {visibleDropdown === selectedPost.post_id.toString() && (
+                      <View style={styles.dropdownMenu}>
+                        <TouchableOpacity
+                          onPress={() => handleDeletePost(selectedPost)}
+                          style={styles.dropdownItem}
+                        >
+                          <MaterialIcons name="delete" size={16} color="#e11d48" />
+                          <Text style={styles.dropdownItemText}>Delete post</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
 
                     {selectedPost.content && <Text style={styles.postText}>{selectedPost.content}</Text>}
 
@@ -732,6 +623,15 @@ const HomeScreen = () => {
             </View>
           </View>
         </Modal>
+        <Popup
+          isVisible={deleteConfirmVisible}
+          message="Delete this post? This cannot be undone."
+          onClose={cancelDeletePost}
+          buttons={[
+            { label: 'Cancel', onPress: cancelDeletePost, backgroundColor: '#e5e7eb', labelColor: '#111827' },
+            { label: 'Delete', onPress: confirmDeletePost, backgroundColor: '#e11d48' },
+          ]}
+        />
       </SafeAreaView>
     </>
   );
@@ -740,11 +640,11 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   flexContainer: {
     flex: 1,
-  paddingHorizontal: 22,
-  paddingTop: 0,
-  paddingBottom: 22,
-  backgroundColor: '#ffffff',
-  },
+   paddingHorizontal: 22,
+   paddingTop: 0,
+   paddingBottom: 22,
+   backgroundColor: 'transparent',
+   },
   postBox: {
     backgroundColor: "#B4D7EE",
     borderRadius: 30,
@@ -877,6 +777,7 @@ const styles = StyleSheet.create({
   marginBottom: 0,
   borderBottomWidth: 1,
   borderBottomColor: "#e5e7eb",
+  position: 'relative',
   },
   postText: {
   marginBottom: 4,
@@ -970,9 +871,50 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   headerRow: {
-  flexDirection: "row",
-  alignItems: "center",
-  marginBottom: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+    justifyContent: "space-between",
+  },
+  dropdownMenu: {
+    position: 'absolute',
+    top: 44,
+    right: 8,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 6,
+    borderColor: '#e5e7eb',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
+    zIndex: 2,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#fff1f2',
+    borderRadius: 10,
+    borderColor: '#fecdd3',
+    borderWidth: 1,
+  },
+  dropdownItemText: {
+    marginLeft: 10,
+    fontSize: 14,
+    color: '#be123c',
+    fontWeight: '600',
+  },
+  dropdownBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1,
   },
   header: {
     alignItems: 'flex-start',
@@ -1038,33 +980,6 @@ const styles = StyleSheet.create({
     right: 20,
     zIndex: 1,
   },
-  dropdownMenu: {
-    position: "absolute",
-    top: 40,
-    right: 10,
-    backgroundColor: "#E7F6FF",
-    borderRadius: 5,
-    padding: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    zIndex: 2,
-  },
-
-  dropdownItem: {
-    padding: 8,
-    fontSize: 14,
-    color: "#007AFF",
-    fontWeight: "500",
-  },
-  dropdownItems: {
-    padding: 8,
-    fontSize: 14,
-    color: "#ff0000",
-    fontWeight: "500",
-  },
   logoutButton: {
     padding: 5,
     backgroundColor: "lightblue",
@@ -1100,19 +1015,20 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.8)",
   },
   listCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 14,
-    paddingVertical: 16,
-    paddingHorizontal: 18,
     marginHorizontal: 14,
     marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#DCEFFE',
+    marginTop: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.09,
+    shadowOpacity: 0.15,
     shadowRadius: 6,
-    elevation: 3,
+    elevation: 5,
+    overflow: 'hidden',
+  },
+  createPostTouchable: {
+    paddingVertical: 16,
+    paddingHorizontal: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1125,11 +1041,10 @@ const styles = StyleSheet.create({
     height: '100%'
   },
   listCardText: {
-    fontSize: 18,
-    color: '#0D2538',
-    textAlign: 'left',
-    flex: 1,
-    paddingLeft: 4,
+    fontSize: 16,
+    color: '#FFFFFF',
+    textAlign: 'center',
+    fontWeight: '600',
   },
   pressed: {
     opacity: 0.85,
@@ -1138,13 +1053,26 @@ const styles = StyleSheet.create({
   listCardInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     width: '100%'
   },
-  chevron: {
-    color: '#4A90E2',
-    fontSize: 22,
-    paddingLeft: 8,
+  /* search icon container placed over TopNav */
+  searchButton: {
+    position: 'absolute',
+    right: 16,
+    // top is calculated inline using insets.top + offset
+    zIndex: 40,
+  },
+  searchIcon: {
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 22,
+    padding: 10,
+    // lighter shadow
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 3,
   },
 });
 export default HomeScreen;

@@ -1,17 +1,6 @@
-import {
-  DrawerContentScrollView,
-  DrawerItemList,
-  createDrawerNavigator,
-  DrawerContentComponentProps,
-} from "@react-navigation/drawer";
-
 import React, { useContext } from "react";
-import { getHeaderTitle } from "@react-navigation/elements";
-import ScreenHeader from "./ScreenHeader";
 import HomeScreen from "../screens/HomeScreen";
 import { View } from "react-native";
-import { DrawerNavigationState, ParamListBase } from "@react-navigation/native";
-import Logout from "./Logout";
 
 import { AuthContext } from "../util/AuthContext";
 import { jwtDecode } from "jwt-decode";
@@ -20,19 +9,9 @@ import ProfileSearchScreen from "../screens/ProfileSearchScreen";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import ProfileStackNavigator from "./ProfileStackNav";
 import PostDetailScreen from '../screens/PostDetailScreen';
+import CreatePostScreen from '../screens/CreatePostScreen';
 
 import BugReportScreen from "../screens/ReportScreen"
-
-const Drawer = createDrawerNavigator();
-
-function CustomDrawerSideMenu(props: DrawerContentComponentProps) {
-  return (
-    <DrawerContentScrollView {...props}>
-      <DrawerItemList {...props} />
-      <Logout />
-    </DrawerContentScrollView>
-  );
-}
 
 const Stack = createNativeStackNavigator();
 
@@ -60,39 +39,22 @@ function CommunitySideMenu() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Drawer.Navigator
-        screenOptions={{
-          header: ({ navigation, route, options }) => {
-            const title = getHeaderTitle(options, route.name);
-
-            return <ScreenHeader  navigation={navigation} />;
-          },
-        }}
-        drawerContent={(props) => <CustomDrawerSideMenu {...props} />}
-      >
-        <Drawer.Screen name="Community Home" component={HomeScreen} />
-        <Drawer.Screen
-          name="PostDetail"
-          component={PostDetailScreen}
-          options={{
-            // hide from drawer list
-            drawerItemStyle: { height: 0 },
-            drawerLabel: () => null,
-          }}
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Community Home" component={HomeScreen} />
+        <Stack.Screen name="PostDetail" component={PostDetailScreen} />
+        <Stack.Screen
+          name="CreatePost"
+          component={CreatePostScreen}
         />
-
-        <Drawer.Screen name="Profile" children={(props) => ( 
-          <ProfileStackNavigator {...props} userID={currentUserID} />
+        <Stack.Screen
+          name="Profile"
+          children={(props) => (
+            <ProfileStackNavigator {...props} userID={currentUserID} />
           )}
         />
-        
-        <Drawer.Screen
-          name="Search"
-          component={SearchStackNavigator}
-        ></Drawer.Screen>
-
-        <Drawer.Screen name="Bug Report" component={BugReportScreen} />
-      </Drawer.Navigator>
+        <Stack.Screen name="Search" component={SearchStackNavigator} />
+        <Stack.Screen name="Bug Report" component={BugReportScreen} />
+      </Stack.Navigator>
 
     </View>
   );

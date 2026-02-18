@@ -1,8 +1,8 @@
 import React, {useState, useEffect} from "react";
-import { View, StyleSheet, Text, Image, Dimensions, SafeAreaView, FlatList, TouchableOpacity } from "react-native";
+import { View, StyleSheet, Text, Image, Dimensions, FlatList, TouchableOpacity, Modal } from "react-native";
 import {getResourceInfo } from "../api/resources";
 import { Resource } from "../api/types";
-import { AntDesign } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import UpdateResourceModal from "./UpdateResourceModal";
 import DeleteResource from "./DeleteResources";
 
@@ -15,6 +15,7 @@ interface ResourceProps{
 const ResourcesCard:React.FC<ResourceProps> = ({resource_id, org_id}) => {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [isDeleteVisible, setIsDeleteVisible] = useState(false);
+    const [isMenuVisible, setIsMenuVisible] = useState(false);
     const [data, setData] = useState<Resource[]>([]);
         const fetchInfo = async () => {
             try {
@@ -28,26 +29,40 @@ const ResourcesCard:React.FC<ResourceProps> = ({resource_id, org_id}) => {
             fetchInfo();
         },[])
     return(
-        <SafeAreaView>
+        <View>
             <FlatList 
             data={data}
-            keyExtractor={(item) => item.resource_id}
+            keyExtractor={(item) => String(item.resource_id)}
             scrollEnabled= {false}
             renderItem={({item}) => (
                 <View style={styles.cardContainer}>
                     <View style ={styles.headerContainer}>
-                        <View>
+                        <View style={styles.titleWrapper}>
                             <Text style={styles.title}>{item.name}</Text>
                         </View>
-                        <View style = {styles.editContainer}>
-                            <TouchableOpacity onPress={() => setIsModalVisible(true)}>
-                                    <AntDesign name="edit" size={30}/>
+                        <TouchableOpacity style={styles.menuButton} onPress={() => setIsMenuVisible(!isMenuVisible)}>
+                            <MaterialIcons name="more-vert" size={24} color="#0084D1" />
+                        </TouchableOpacity>
+                    </View>
+                    {/* Dropdown Menu */}
+                    {isMenuVisible && (
+                        <View style={styles.dropdownMenu}>
+                            <TouchableOpacity style={styles.menuItem} onPress={() => {
+                                setIsModalVisible(true);
+                                setIsMenuVisible(false);
+                            }}>
+                                <MaterialIcons name="edit" size={18} color="#0084D1" />
+                                <Text style={styles.menuItemText}>Edit</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity onPress={() => setIsDeleteVisible(true)}>
-                                    <AntDesign name="delete" size={30}/>
+                            <TouchableOpacity style={styles.menuItem} onPress={() => {
+                                setIsDeleteVisible(true);
+                                setIsMenuVisible(false);
+                            }}>
+                                <MaterialIcons name="delete" size={18} color="#e74c3c" />
+                                <Text style={[styles.menuItemText, {color: '#e74c3c'}]}>Delete</Text>
                             </TouchableOpacity>
                         </View>
-                    </View>
+                    )}
                     {/* Short Tagline */}
                     <View>
                         <Text style={styles.tagline}>{item.tagline}</Text>
@@ -69,35 +84,76 @@ const ResourcesCard:React.FC<ResourceProps> = ({resource_id, org_id}) => {
                     }} />
                 </View>
             )}/>
-        </SafeAreaView>
+        </View>
     );
 };
 const deviceWidth = Math.round(Dimensions.get('window').width);
 const styles = StyleSheet.create({
+    menuButton: {
+        padding: 8,
+        marginRight: -8,
+    },
+    dropdownMenu: {
+        position: 'absolute',
+        top: 40,
+        right: 0,
+        backgroundColor: '#f5f5f5',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#e0e0e0',
+        overflow: 'hidden',
+        zIndex: 20,
+        minWidth: 140,
+    },
+    menuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+    },
+    menuItemText: {
+        fontSize: 14,
+        color: '#0084D1',
+        fontWeight: '500',
+    },
     editContainer: {
         flexDirection: "row",
-        gap: 20,
+        gap: 12,
+        alignItems: "center",
+    },
+    actionButton: {
+        padding: 8,
     },
     cardContainer: { 
-        width: deviceWidth - 20,
+        width: deviceWidth,
         backgroundColor: 'white',
-        margin: 10,
+        margin: 0,
+        marginBottom: 8,
         borderRadius: 0,
-        padding: 13,
-        gap: 6,
+        padding: 16,
+        gap: 8,
         shadowColor: '#000',
         shadowOffset: {
-            width: 5,
-            height: 5,
+            width: 0,
+            height: 2,
         },
-        shadowOpacity: 0.25,
-        shadowRadius: 5,
-        elevation: 9,
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 3,
     },
     headerContainer:{
         flexDirection:'row',
-        gap: 20,
+        gap: 12,
         justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        position: 'relative',
+        zIndex: 10,
+    },
+    titleWrapper: {
+        flex: 1,
     },
     imageStyle: {
         height: 150,
@@ -108,7 +164,9 @@ const styles = StyleSheet.create({
     },
     title:{
         fontSize: 20,
-        fontWeight: 'bold',
+        fontWeight: '600',
+        color: '#333',
+        flex: 1,
     },
     tagline:{
         fontSize: 14,

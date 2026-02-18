@@ -19,6 +19,7 @@ import {
 } from "../api/comments";
 import { Comment } from "../api/types";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import { formatTimeAgo } from "../util/formatTime";
 
 interface CommentsProps {
   comments: Comment[];
@@ -122,7 +123,7 @@ const Comments: React.FC<CommentsProps> = ({
           <View style={styles.commentHeaderRow}>
             <View style={styles.headerTextContainer}>
               <Text style={styles.author}>{comment.username}</Text>
-              <Text style={styles.commentTimestamp}>{new Date(comment.created_at).toLocaleTimeString()}</Text>
+              <Text style={styles.commentTimestamp}>{formatTimeAgo(comment.created_at.toString())}</Text>
             </View>
           </View>
           <Text style={styles.text}>{comment.content}</Text>
@@ -162,7 +163,13 @@ const Comments: React.FC<CommentsProps> = ({
       showsVerticalScrollIndicator={false}
     >
       <View style={styles.container}>
-        {renderComments()}
+        {commentsState.length === 0 ? (
+          <View style={styles.emptyCommentsWrap}>
+            <Text style={styles.emptyCommentsText}>No comments yet — be the first to comment</Text>
+          </View>
+        ) : (
+          renderComments()
+        )}
         {showInput && (
           <View style={styles.inputContainer}>
             <View style={styles.inputPill}>
@@ -300,6 +307,15 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 6,
     color: '#111',
+  },
+  emptyCommentsWrap: {
+    paddingVertical: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyCommentsText: {
+    color: '#9CA3AF',
+    fontSize: 15,
   },
   sendButton: {
     backgroundColor: '#007AFF',

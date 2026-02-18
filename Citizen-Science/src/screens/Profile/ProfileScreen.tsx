@@ -46,6 +46,7 @@ const ProfileScreen = ({ navigation, route }: any) => {
   const decodedToken = userToken ? jwtDecode<AccessToken>(userToken) : null;
   const routeUserId = route && route.params && route.params.userID !== undefined ? route.params.userID : null;
   const userID = typeof routeUserId === 'number' && !isNaN(routeUserId) ? routeUserId : decodedToken ? decodedToken.user_id : NaN;
+  const isOwnProfile = !routeUserId || routeUserId === decodedToken?.user_id;
 
   const [userPfp, setUserPfp] = useState<string | null>(null);
   const [firstName, setFirstName] = useState<string>('');
@@ -113,7 +114,7 @@ const ProfileScreen = ({ navigation, route }: any) => {
 
   return (
     <View style={styles.container}>
-    <TopNav title="Profile" />
+    <TopNav title="Profile" showBack={!isOwnProfile} />
   <FlatList
         data={[]}
         keyExtractor={() => 'empty'}
@@ -147,50 +148,64 @@ const ProfileScreen = ({ navigation, route }: any) => {
                     {email ? <Text style={styles.email}>{email}</Text> : null}
                     {location ? <Text style={styles.location}>{location}</Text> : null}
                   </View>
-                  <TouchableOpacity style={styles.settingsBtn} onPress={() => navigation.navigate('ProfileEditScreen')}>
-                    <MaterialIcons name="settings" size={18} color="#fff" />
-                  </TouchableOpacity>
+                  {isOwnProfile && (
+                    <TouchableOpacity style={styles.settingsBtn} onPress={() => navigation.navigate('ProfileEditScreen')}>
+                      <MaterialIcons name="settings" size={18} color="#fff" />
+                    </TouchableOpacity>
+                  )}
                 </View>
 
                 <View style={styles.statsRow}>
-                  <View style={styles.statBox}>
+                  <TouchableOpacity
+                    style={styles.statBox}
+                    disabled={!userID || isNaN(userID)}
+                    onPress={() => navigation.navigate('ProfilePostsScreen', { userID })}
+                  >
                     <MaterialIcons name="article" size={18} color="#fff" style={{ marginBottom: 6 }} />
                     <Text style={styles.statNum}>{postsCount}</Text>
                     <Text style={styles.statLabel}>Posts</Text>
-                  </View>
+                  </TouchableOpacity>
                   <View style={styles.statBox}>
                     <MaterialIcons name="event" size={18} color="#fff" style={{ marginBottom: 6 }} />
                     <Text style={styles.statNum}>{0}</Text>
                     <Text style={styles.statLabel}>Events</Text>
                   </View>
-                  <View style={styles.statBox}>
+                  <TouchableOpacity
+                    style={styles.statBox}
+                    disabled={!isOwnProfile}
+                    onPress={() => navigation.navigate('ProfileFollowingScreen', { userID })}
+                  >
                     <MaterialIcons name="groups" size={18} color="#fff" style={{ marginBottom: 6 }} />
                     <Text style={styles.statNum}>{followingCount}</Text>
                     <Text style={styles.statLabel}>Followed</Text>
-                  </View>
+                  </TouchableOpacity>
                 </View>
               </LinearGradient>
             </View>
 
-            <Text style={styles.sectionTitle}>Support</Text>
-            <TouchableOpacity style={styles.supportItem} onPress={() => navigation.navigate('ReportScreen')}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Icon name="help-outline" size={20} color="#111827" style={{ marginRight: 12 }} />
-                <Text style={styles.supportText}>Help & Support</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.supportItem} onPress={() => navigation.navigate('ReportScreen')}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Icon name="description" size={20} color="#111827" style={{ marginRight: 12 }} />
-                <Text style={styles.supportText}>Create a Report</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.supportItem} onPress={() => setConfirmVisible(true)}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name="logout" size={20} color="#e11d48" style={{ marginRight: 10 }} />
-                <Text style={[styles.supportText, { color: '#e11d48', fontWeight: '600' }]}>Log Out</Text>
-              </View>
-            </TouchableOpacity>
+            {isOwnProfile && (
+              <>
+                <Text style={styles.sectionTitle}>Support</Text>
+                <TouchableOpacity style={styles.supportItem} onPress={() => navigation.navigate('ReportScreen')}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Icon name="help-outline" size={20} color="#111827" style={{ marginRight: 12 }} />
+                    <Text style={styles.supportText}>Help & Support</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.supportItem} onPress={() => navigation.navigate('ReportScreen')}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Icon name="description" size={20} color="#111827" style={{ marginRight: 12 }} />
+                    <Text style={styles.supportText}>Create a Report</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.supportItem} onPress={() => setConfirmVisible(true)}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name="logout" size={20} color="#e11d48" style={{ marginRight: 10 }} />
+                    <Text style={[styles.supportText, { color: '#e11d48', fontWeight: '600' }]}>Log Out</Text>
+                  </View>
+                </TouchableOpacity>
+              </>
+            )}
           </>
   )}
   renderItem={() => null}

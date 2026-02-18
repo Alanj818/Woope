@@ -9,9 +9,10 @@ interface TopNavProps {
   title?: string;
   showBack?: boolean;
   onBack?: () => void;
+  rightComponent?: React.ReactNode;
 }
 
-const TopNav: React.FC<TopNavProps> = ({ title = '', showBack = false, onBack }) => {
+const TopNav: React.FC<TopNavProps> = ({ title = '', showBack = false, onBack, rightComponent }) => {
   const insets = useSafeAreaInsets();
   const navigation: any = useNavigation();
   const handleBack = () => {
@@ -38,6 +39,7 @@ const TopNav: React.FC<TopNavProps> = ({ title = '', showBack = false, onBack })
             <Text style={styles.titleText}>{title}</Text>
           </View>
         </View>
+        {rightComponent && <View>{rightComponent}</View>}
       </View>
     </LinearGradient>
   );
