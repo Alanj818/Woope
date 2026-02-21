@@ -11,13 +11,6 @@ type TitleProps = {
 };
 import { responsiveFontSize, responsiveHeight, responsiveWidth } from "react-native-responsive-dimensions";
 
-export type TitleProps = {
-    text: string;
-    fontSize: number;
-    textStyle: 'title' | 'subtitle';
-    color: string;
-    position: { top: number; left: number};
-};
 
 const ScreenTitle: React.FC<TitleProps> = ({
     text,

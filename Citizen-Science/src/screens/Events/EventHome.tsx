@@ -2,7 +2,7 @@ import React, {useState,useEffect, useContext} from 'react';
 import { View, Text, SafeAreaView, FlatList, TouchableOpacity, StyleSheet, StatusBar, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import EventCard from '../../components/EventCard';
-import CreateEvent from '../../components/CreateEvent';
+import CreateEvent from '../../components/CreateEvent'
 import TopNav from '../../components/TopNav';
 import { MaterialIcons, Octicons } from '@expo/vector-icons';
 import { getEvents } from '../../api/event';

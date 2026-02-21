@@ -3,7 +3,7 @@ import { View, Text, Image, StyleSheet, SafeAreaView, TextInput, TouchableOpacit
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import TopNav from '../components/TopNav';
-import { TAB_BAR_STYLE } from '../components/NavigationBar';
+import { TAB_BAR_STYLE } from '../navigation/NavigationBar';
 import Comments from '../components/Comments';
 import LikeButton from '../components/LikeButton';
 import { MaterialIcons } from '@expo/vector-icons';
