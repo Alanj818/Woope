@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
-import { mdiHome, mdiTestTube, mdiCalendar, mdiBookshelf, mdiMapMarker, mdiFileDocument } from '@mdi/js';
+import { mdiHome, mdiTestTube, mdiCalendar, mdiBookshelf, mdiMapMarker, mdiAccount } from '@mdi/js';
 import CalendarScreen from '../screens/Calendar/CalendarScreen';
 import CommunitySideMenu from '../components/CommunitySideMenu';
 import { MapScreen } from '../screens/Map/MapScreen';
@@ -21,19 +21,24 @@ import CreateOrganization from '../screens/Organizations/CreateOrganization';
 import CreateCategory from '../screens/Organizations/CreateCategory';
 import FeatureOrganization from '../screens/Organizations/FeatureOrganization';
 import EventHome from '../screens/Events/EventHome';
-import ReportScreen from '../screens/ReportScreen';
+// ...existing code...
+import ProfileStackNavigator from './ProfileStackNav'
 import DateScreen from '../screens/Calendar/DateScreen';
-import CreateUserEvent from '../screens/Calendar/CreateUserEvent'
-
-import ProfileScreen from '../screens/Profile/ProfileScreen';
-import { AuthContext } from "../util/AuthContext";
-import { jwtDecode } from "jwt-decode";
-import { AccessToken } from "../util/token";
-
-import { usePalette} from '../theme/paletteController'
-
+//import OldCalendarScreen from '../screens/OldCalendarScreen'
+import {usePalette} from '../theme/paletteController';
+import { AuthContext } from '../util/AuthContext';
+import { jwtDecode } from 'jwt-decode';
 
 const Tab = createBottomTabNavigator();
+
+export const TAB_BAR_STYLE = {
+    backgroundColor: '#ffffff',
+    paddingBottom: 13,
+    paddingTop: 2,
+    height: 80,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+};
 interface AnimatedTabIconProps {
     focused: boolean;
     IconPath: string;
@@ -73,27 +78,37 @@ const ResourceStackScreen = () => (
         <ResourceStack.Screen name="CreateCategory" component={CreateCategory} />
         <ResourceStack.Screen name="FeatureOrganization" component={FeatureOrganization} />
         <ResourceStack.Screen name="EventHome" component={EventHome}/>
-        <ResourceStack.Screen name="CreateUserEvent" component={CreateUserEvent} />
+        {/* <ResourceStack.Screen name="CreateUserEvent" component={CreateUserEvent} /> */}
     </ResourceStack.Navigator>
 )
 
 const ProfileStack = createNativeStackNavigator();
 
-const ProfileStackScreen = () => {
-  const { userToken } = useContext(AuthContext);
-  const decodedToken = userToken ? jwtDecode<AccessToken>(userToken) : null;
-  const currentUserID = decodedToken ? decodedToken.user_id : null;
+// const ProfileStackScreen = () => {
+//   const { userToken } = useContext(AuthContext);
+//   const decodedToken = userToken ? jwtDecode<AccessToken>(userToken) : null;
+//   const currentUserID = decodedToken ? decodedToken.user_id : null;
 
-  return (
-    <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
-      <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} initialParams={{ userID: currentUserID }}/>
-    </ProfileStack.Navigator>
-  );
-};
+//   return (
+//     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
+//       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} initialParams={{ userID: currentUserID }}/>
+//     </ProfileStack.Navigator>
+//   );
+// };
 
 const NavigationBar = () => {
-    const { theme } = usePalette();
-
+    const {theme} = usePalette();
+    const { userToken } = useContext(AuthContext);
+    let currentUserID: number | undefined = undefined;
+    try {
+        if (userToken) {
+            const decoded: any = jwtDecode(userToken);
+            currentUserID = decoded?.user_id;
+        }
+    } catch (e) {
+        currentUserID = undefined;
+    }
+    // shared tab bar style is declared at module scope (TAB_BAR_STYLE)
     return (
         <View style={{ flex: 1 }}>
             <Tab.Navigator
@@ -114,25 +129,17 @@ const NavigationBar = () => {
                             case 'Map':
                                 IconPath = mdiMapMarker;
                                 break;
-                            case 'Report':
-                                IconPath = mdiFileDocument;
+                            case 'Profile':
+                                IconPath = mdiAccount;
                                 break;
                             default:
-                                IconPath = mdiHome;
+                                IconPath = undefined as any;
                         }
                         return <AnimatedTabIcon focused={focused} IconPath={IconPath} />;
                     },
                     tabBarActiveTintColor: 'blue',
                     tabBarInactiveTintColor: 'black',
-                    tabBarStyle:{
-                        backgroundColor: theme.main,
-                        paddingBottom: 13,
-                        paddingTop: 2,
-                        height: 80,
-                        borderTopLeftRadius: 20,
-                        borderTopRightRadius: 20,
-
-                    },
+                    tabBarStyle: TAB_BAR_STYLE,
                     tabBarLabelStyle: {
                         marginBottom: 3,
                     },
@@ -142,7 +149,7 @@ const NavigationBar = () => {
                 <Tab.Screen name="Calendar" component={CalendarScreen} />
                 <Tab.Screen name="Resources" component={ResourceStackScreen} />
                 <Tab.Screen name="Map" component={MapScreen} />
-                <Tab.Screen name="Profile" component={ProfileStackScreen}  />
+                <Tab.Screen name="Profile" children={(props) => (<ProfileStackNavigator {...props} userID={currentUserID} />)} />
             </Tab.Navigator>
         </View>
     );

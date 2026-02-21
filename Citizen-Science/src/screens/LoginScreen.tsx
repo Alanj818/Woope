@@ -107,9 +107,9 @@ const LoginScreen: React.FC = () => {
                         borderColor="#5EA1E9"
                         borderRadius={10}
                         position={{ top: 8, left: 0 }}
-                        autoCapitalize="none"        // ✅ Prevents first letter auto-cap
-                        keyboardType="email-address" // ✅ Opens correct keyboard with @ symbol
-                        textContentType="emailAddress" // ✅ Proper autocomplete behavior
+                        autoCapitalize="none"        // Prevents first letter auto-cap
+                        keyboardType="email-address" // Opens correct keyboard with @ symbol
+                        textContentType="emailAddress" // Proper autocomplete behavior
                     />
 
 

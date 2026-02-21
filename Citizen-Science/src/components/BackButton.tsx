@@ -3,12 +3,9 @@ import {TouchableOpacity, ViewStyle, AccessibilityRole } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { responsiveHeight, responsiveWidth } from "react-native-responsive-dimensions";
 import Icon from 'react-native-vector-icons/MaterialIcons';
-
-
-export type BackButtonProps = {
+type BackButtonProps = {
     position: {top: number; left: number};
-}
-
+};
 
 // Reusable back control: tries goBack(), then previous-route inference, then falls back to main nav.
 const BackButton: React.FC<BackButtonProps> = ({ position }) => {

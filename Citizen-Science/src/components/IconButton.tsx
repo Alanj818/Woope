@@ -7,26 +7,27 @@ import {
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { responsiveHeight } from "react-native-responsive-dimensions";
 import { Double } from "react-native/Libraries/Types/CodegenTypes";
+
+type IconButtonProps = {
+	iconName: string;
+	onPress: () => void;
+	iconSize: number;
+	iconColor: string;
+	borderWidth?: number;
+	borderRadius?: number;
+	borderColor?: string;
+	height?: number;
+	width?: number;
+	backgroundColor?: string;
+	paddingHorizontal?: number;
+	paddingBottom?: number;
+	paddingTop?: number;
+	paddingLeft?: number;
+	paddingRight?: number;
+	paddingVertical?: number;
+};
 import React from "react";
 
-export type IconButtonProps = {
-    iconName: string;
-	onPress: () => void;
-	iconSize: number,
-	iconColor: string,
-    borderWidth?: number;
-    borderRadius?: number;
-    borderColor?: string;
-    height?: number,
-    width?: number,
-    backgroundColor?: string,
-    paddingHorizontal?: number,
-    paddingBottom?: number,
-    paddingTop?: number,
-    paddingLeft?: number,
-	paddingRight?: number,
-    paddingVertical?: number,
-};
 
 const IconButton: React.FC<IconButtonProps> = ({
 	iconName,

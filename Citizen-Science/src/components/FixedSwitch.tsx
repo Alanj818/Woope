@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { View, ScrollView, Switch, Text, StyleSheet } from "react-native";
 
 interface Props {
-  onValueChange: () => void;
+  onValueChange: (value: boolean) => void;
   value: boolean;
 }
 

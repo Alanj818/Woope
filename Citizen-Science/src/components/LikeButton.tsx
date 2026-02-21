@@ -1,56 +1,76 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { likePost, unlikePost } from "../api/posts";
+import { AuthContext } from "../util/AuthContext";
 
 interface LikeButtonProps {
     postId: number;
     user_id: number;
     initialLikesCount?: number;
     likedPost: boolean;
+    onToggle?: (postId: number, liked: boolean, likesCount: number) => void;
 }
 
 // Assuming likePost and unlikePost are async functions that return the updated likes count
-const LikeButton: React.FC<LikeButtonProps> = ({ postId, user_id, initialLikesCount = 0, likedPost }) => {
-    const [liked, setLiked] = useState(Boolean(likedPost));
-    const [likesCount, setLikesCount] = useState(initialLikesCount);
+const LikeButton: React.FC<LikeButtonProps> = ({ postId, user_id, initialLikesCount = 0, likedPost, onToggle }) => {
+    const [liked, setLiked] = useState<boolean>(Boolean(likedPost));
+    const [likesCount, setLikesCount] = useState<number>(initialLikesCount);
+
+    const { setUserToken } = useContext(AuthContext);
+
+    // keep internal state in sync if parent updates props
+    React.useEffect(() => {
+        setLiked(Boolean(likedPost));
+    }, [likedPost]);
+
+    React.useEffect(() => {
+        setLikesCount(initialLikesCount);
+    }, [initialLikesCount]);
 
     const toggleLike = async () => {
-        if (liked) {
-            try {
-                await unlikePost(postId, user_id);
-                setLikesCount(likesCount - 1); // Corrected decrement
-            } catch (error) {
-                console.error('Error unliking post:', error);
+        // optimistic update
+        const prevLiked = liked;
+        const prevCount = likesCount;
+        const newLiked = !prevLiked;
+        const newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+        setLiked(newLiked);
+        setLikesCount(newCount);
+
+        try {
+            if (newLiked) {
+                await likePost(postId, user_id, setUserToken);
+            } else {
+                await unlikePost(postId, user_id, setUserToken);
             }
-        } else {
-            try {
-                await likePost(postId, user_id);
-                setLikesCount(likesCount + 1); // Corrected increment
-            } catch (error) {
-                console.error('Error liking post:', error);
-            }
+            // notify parent of the change
+            if (onToggle) onToggle(postId, newLiked, newCount);
+        } catch (error) {
+            // rollback on failure
+            console.error('Error toggling like:', error);
+            setLiked(prevLiked);
+            setLikesCount(prevCount);
         }
-        setLiked(!liked);
-    
     };
 
     return (
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingRight: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingRight: 0 }}>
             <Pressable onPress={toggleLike} style={styles.LikeButton}>
                 <MaterialCommunityIcons
                     name={liked ? "heart" : "heart-outline"}
-                    size={24}
+                    size={18}
                     color={liked ? "red" : "black"}
                 />
             </Pressable>
-            <Text style={{ marginLeft: 5 }}>{likesCount}</Text>
+            <Text style={{ marginLeft: 6, fontSize: 15, color: '#6b7280' }}>{likesCount}</Text>
         </View>
     );
 };
 const styles = StyleSheet.create({
     LikeButton: {
-        marginLeft: 7,
+        marginLeft: 4,
+        padding: 4,
     },
 
 });

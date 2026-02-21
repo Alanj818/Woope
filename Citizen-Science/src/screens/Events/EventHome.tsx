@@ -2,8 +2,9 @@ import React, {useState,useEffect, useContext} from 'react';
 import { View, Text, SafeAreaView, FlatList, TouchableOpacity, StyleSheet, StatusBar, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import EventCard from '../../components/EventCard';
-import CreateEvent from './CreateEvent';
-import { Octicons } from '@expo/vector-icons';
+import CreateEvent from '../../components/CreateEvent';
+import TopNav from '../../components/TopNav';
+import { MaterialIcons, Octicons } from '@expo/vector-icons';
 import { getEvents } from '../../api/event';
 import { Event } from '../../api/types';
 
@@ -23,14 +24,14 @@ export const EventHome = ({route}) => {
         fetchEvents();
     },[])
     return(
-        <SafeAreaView style = {styles.container}>
-            <View>
-                <View style={styles.upcomingEvents}>
-                    <Text style={styles.title}>All Events</Text>
-                    <TouchableOpacity onPress={() => setIsModalVisible(true)}>
-                        <Octicons style={styles.addIcon} name='diff-added' size={30}/>
-                    </TouchableOpacity>
-                </View>
+        <>
+        <TopNav title="Events" showBack onBack={() => navigation.goBack()} />
+        <SafeAreaView style={[styles.container, { backgroundColor: 'transparent', marginTop: 0, paddingTop: 0 }]}>
+            <View style={styles.header}>
+                <Text style={styles.title}>All Events</Text>
+                <TouchableOpacity onPress={() => setIsModalVisible(true)}>
+                    <Octicons style={styles.addIcon} name='diff-added' size={28} color="#0084D1"/>
+                </TouchableOpacity>
             </View>
             <FlatList
             data={eventData}
@@ -41,7 +42,9 @@ export const EventHome = ({route}) => {
                     event_id = {item.event_id} 
                     org_id = {item.org_id} 
                 />
-            )}/> 
+            )}
+            ListEmptyComponent={<Text style={styles.emptyText}>No events yet</Text>}
+            /> 
             <CreateEvent org_id={route.params.org_id} isVisible = {isModalVisible} onClose={() => 
                 {
                 setIsModalVisible(false)
@@ -49,49 +52,34 @@ export const EventHome = ({route}) => {
                 }
             }/>
         </SafeAreaView>
+        </>
     );
 };
 const styles = StyleSheet.create({
-    addIcon: {
-
-    },
-    scrollview: {
-        flex: 1,
-    },
     container: {
         flex: 1,
+        backgroundColor: '#f5f5f5',
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e0e0e0',
+        backgroundColor: '#fff',
     },
     title: {
-        fontSize: 20,
-        color: '#232f46',
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#333',
     },
-    directoryButton: {
-        borderRadius: 10,
-        padding: 14,
-        marginVertical: 7,
-        marginHorizontal: 15,
-        backgroundColor: "lightblue",
-        alignItems: "center",
-        justifyContent: "center",
-        shadowOffset: {
-            width: 1,
-            height: 1,
-        },
-        shadowOpacity: 0.3,
-        shadowRadius: 3,
-        elevation: 9,
+    emptyText: {
+        textAlign: 'center',
+        color: '#999',
+        fontSize: 16,
+        marginTop: 32,
     },
-    upcomingEvents: {
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        flexDirection:"row",
-        marginHorizontal:20,
-        marginBottom: 5,
-        padding: 10,
-        borderBottomColor: 'lightgrey',
-        borderBottomWidth: 2,
-    },
-    
-    
 });
 export default EventHome

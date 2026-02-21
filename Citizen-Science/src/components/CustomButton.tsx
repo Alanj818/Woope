@@ -4,7 +4,7 @@ import { TouchableOpacity, Text, ViewStyle } from 'react-native';
 import styles from '../StyleSheet';
 import {responsiveHeight, responsiveWidth} from "react-native-responsive-dimensions";
 
-export type ButtonProps = {
+type ButtonProps = {
     size: { width: number; height: number };
     label: string;
     labelColor: string;
@@ -15,7 +15,6 @@ export type ButtonProps = {
     borderColor?: string;
     borderWidth?: number;
     disabled?: boolean;
-
 };
 
 const CustomButton: React.FC<ButtonProps> = ({

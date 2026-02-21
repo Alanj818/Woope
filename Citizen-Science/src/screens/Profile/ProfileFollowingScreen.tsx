@@ -1,23 +1,25 @@
+import React, { useCallback, useState } from "react";
 import {
-	View,
-	StyleSheet,
-	FlatList,
-	Text,
-	Pressable,
 	ActivityIndicator,
-	RefreshControl,
-	TouchableOpacity,
+	FlatList,
 	Image,
+	Pressable,
+	RefreshControl,
+	StyleSheet,
+	Text,
+	View,
 } from "react-native";
 import {
 	responsiveFontSize,
 	responsiveHeight,
 	responsiveWidth,
 } from "react-native-responsive-dimensions";
-import React, { useCallback, useState } from "react";
-import Icon from "react-native-vector-icons/MaterialIcons";
-import { getFollowing } from "../../api/community";
 import { useFocusEffect } from "@react-navigation/native";
+import { getFollowing } from "../../api/community";
+import { getOrganizationsFollowed } from "../../api/organizations";
+import { Organization } from "../../api/types";
+import TopNav from "../../components/TopNav";
+import { LinearGradient } from "expo-linear-gradient";
 
 interface ProfileFollowingScreenProps {
 	route: any;
@@ -30,192 +32,242 @@ const ProfileFollowingScreen: React.FC<ProfileFollowingScreenProps> = ({
 }) => {
 	const { userID } = route.params;
 
-	const [fullyLoaded, setFullyLoaded] = useState(false);
-	const [searchResults, setSearchResults] = useState([]);
-	const [renderSearch, setRenderSearch] = useState(false);
+	const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+	const [isLoadingOrgs, setIsLoadingOrgs] = useState(true);
+	const [userResults, setUserResults] = useState([]);
+	const [orgResults, setOrgResults] = useState<Organization[]>([]);
+	const [activeTab, setActiveTab] = useState<"organizations" | "users">(
+		"organizations"
+	);
 
-	{
-		/* Pushes a profile to the current screen stack takes a number to specify the profile */
-	}
+	const getInitials = (value?: string) => {
+		if (!value) return "";
+		const parts = value.trim().split(/\s+/);
+		if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+		return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+	};
+
 	const navigateToProfile = (user_id: number) => {
 		navigation.push("ProfileScreen", { userID: user_id });
 	};
 
-	{
-		/* Calls the getFollowing api which will return a list of users the profile is following */
-	}
 	const fetchFollowing = useCallback(() => {
+		setIsLoadingUsers(true);
 		getFollowing(userID)
 			.then((data) => {
-				if (!data) {
-					setRenderSearch(false);
-					setFullyLoaded(true);
-				}
-				setSearchResults(data);
-				setRenderSearch(true);
-				setFullyLoaded(true);
+				setUserResults(data || []);
 			})
 			.catch((error) => {
-				setRenderSearch(false);
-				setFullyLoaded(false);
+				setUserResults([]);
 				console.error("Error: ", error);
-			});
+			})
+			.finally(() => setIsLoadingUsers(false));
 	}, [userID]);
 
-	{
-		/* Reload list upon each focus of screen */
-	}
-	useFocusEffect(fetchFollowing);
+	const fetchOrganizations = useCallback(() => {
+		setIsLoadingOrgs(true);
+		getOrganizationsFollowed(userID)
+			.then((data) => {
+				setOrgResults(data || []);
+			})
+			.catch((error) => {
+				setOrgResults([]);
+				console.error("Error: ", error);
+			})
+			.finally(() => setIsLoadingOrgs(false));
+	}, [userID]);
 
-	if (!fullyLoaded) {
-		return (
-			<View
-				style={{
-					alignContent: "flex-start",
-					paddingTop: responsiveHeight(10),
-				}}
-			>
-				<ActivityIndicator size={"large"} color={"lightblue"} />
-			</View>
-		);
-	}
+	useFocusEffect(fetchFollowing);
+	useFocusEffect(fetchOrganizations);
+
 	return (
 		<View style={styles.container}>
-			{/* Screen title and back button */}
-			<View
-				style={{
-					height: responsiveHeight(5),
-					width: responsiveWidth(100),
-					backgroundColor: "lightblue",
-					paddingStart: responsiveWidth(1),
-					flexDirection: "row",
-				}}
-			>
-				<TouchableOpacity
-					style={{
-						height: responsiveHeight(4.5),
-						width: responsiveHeight(6),
-						justifyContent: "center",
-						alignItems: "center",
-						backgroundColor: "transparent",
-					}}
-					onPress={() => navigation.goBack()}
+			<TopNav title="Following" showBack onBack={() => navigation.goBack()} />
+			<View style={styles.tabRow}>
+				<Pressable
+					style={({ pressed }) => [
+						styles.tabButtonWrapper,
+						pressed && styles.tabButtonPressed,
+					]}
+					onPress={() => setActiveTab("organizations")}
 				>
-					<Icon
-						size={responsiveHeight(4.2)}
-						color={"black"}
-						name={"arrow-back"}
-					></Icon>
-				</TouchableOpacity>
-				<Text
-					style={{
-						height: responsiveHeight(4.5),
-						fontSize: responsiveFontSize(3),
-						fontWeight: "bold",
-						paddingStart: responsiveWidth(1),
-					}}
+					{activeTab === "organizations" ? (
+						<LinearGradient
+							colors={["rgba(0,132,209,1)", "rgba(0,146,184,1)"]}
+							start={{ x: 0, y: 0 }}
+							end={{ x: 1, y: 0 }}
+							style={styles.tabButton}
+						>
+							<Text style={[styles.tabText, styles.tabTextActive]}>
+								Organizations
+							</Text>
+						</LinearGradient>
+					) : (
+						<View style={[styles.tabButton, styles.tabButtonInactive]}>
+							<Text style={styles.tabText}>Organizations</Text>
+						</View>
+					)}
+				</Pressable>
+				<Pressable
+					style={({ pressed }) => [
+						styles.tabButtonWrapper,
+						pressed && styles.tabButtonPressed,
+					]}
+					onPress={() => setActiveTab("users")}
 				>
-					Following
-				</Text>
+					{activeTab === "users" ? (
+						<LinearGradient
+							colors={["rgba(0,132,209,1)", "rgba(0,146,184,1)"]}
+							start={{ x: 0, y: 0 }}
+							end={{ x: 1, y: 0 }}
+							style={styles.tabButton}
+						>
+							<Text style={[styles.tabText, styles.tabTextActive]}>
+								Users
+							</Text>
+						</LinearGradient>
+					) : (
+						<View style={[styles.tabButton, styles.tabButtonInactive]}>
+							<Text style={styles.tabText}>Users</Text>
+						</View>
+					)}
+				</Pressable>
 			</View>
-			{/* List of following */}
-			<View style={{}}>
-				{renderSearch && (
+			<View style={styles.listWrap}>
+				{activeTab === "organizations" && (
 					<FlatList
-						style={[{ width: responsiveWidth(100) }]}
-						data={searchResults}
+						contentContainerStyle={styles.listContent}
+						data={orgResults}
 						showsVerticalScrollIndicator={false}
 						refreshControl={
 							<RefreshControl
-								refreshing={!fullyLoaded}
+								refreshing={isLoadingOrgs}
+								onRefresh={fetchOrganizations}
+							/>
+						}
+						ListEmptyComponent={
+							isLoadingOrgs ? (
+								<View style={styles.loadingWrap}>
+									<ActivityIndicator size="large" color="lightblue" />
+								</View>
+							) : (
+								<Text style={styles.emptyText}>No organizations followed</Text>
+							)
+						}
+						renderItem={({ item }) => (
+							<Pressable
+									onPressOut={() =>
+									navigation.navigate("Resources", {
+										screen: "OrganizationProfile",
+										params: {
+											org_id: item.org_id,
+										},
+									})
+								}
+								style={({ pressed }) => [
+									styles.card,
+									pressed && styles.cardPressed,
+								]}
+							>
+								<View style={styles.cardHeaderRow}>
+									<View style={styles.avatarCircle}>
+										{item.image_path ? (
+											<Image
+												source={{
+													uri: `${process.env.EXPO_PUBLIC_API_URL}${item.image_path}`,
+												}}
+												style={styles.avatarImage}
+											/>
+										) : (
+											<Text style={styles.avatarInitials}>
+												{getInitials(item.name)}
+											</Text>
+										)}
+									</View>
+									<View style={styles.cardTitleBlock}>
+										<Text style={styles.cardTitle} numberOfLines={1}>
+											{item.name}
+										</Text>
+										{item.tagline ? (
+											<Text style={styles.cardSubtitle} numberOfLines={1}>
+												{item.tagline}
+											</Text>
+										) : null}
+									</View>
+								</View>
+								{item.text_description ? (
+									<Text style={styles.cardBody} numberOfLines={2}>
+										{item.text_description}
+									</Text>
+								) : null}
+							</Pressable>
+						)}
+					/>
+				)}
+				{activeTab === "users" && (
+					<FlatList
+						contentContainerStyle={styles.listContent}
+						data={userResults}
+						showsVerticalScrollIndicator={false}
+						refreshControl={
+							<RefreshControl
+								refreshing={isLoadingUsers}
 								onRefresh={fetchFollowing}
 							/>
 						}
-						ListHeaderComponent={<></>}
+						ListEmptyComponent={
+							isLoadingUsers ? (
+								<View style={styles.loadingWrap}>
+									<ActivityIndicator size="large" color="lightblue" />
+								</View>
+							) : (
+								<Text style={styles.emptyText}>No users followed</Text>
+							)
+						}
 						renderItem={({ item }) => (
-							<>
-								<View
-									style={{
-										flex: 1,
-										flexDirection: "row",
-										alignItems: "center",
-										justifyContent: "center",
-										paddingTop: responsiveHeight(1),
-									}}
-								>
-									<Pressable
-										onPressOut={() =>
-											navigateToProfile((item as { user_id: number }).user_id)
-										}
-										style={({ pressed }) => [
-											{
-												backgroundColor: pressed ? "lightgrey" : "white",
-											},
-											{
-												flexDirection: "row",
-												paddingVertical: responsiveHeight(0.5),
-												paddingHorizontal: responsiveWidth(3),
-												borderRadius: 5,
-												width: responsiveWidth(100),
-											},
-										]}
-									>
-										
-										{/*eddited logic for default profile picture*/}
+							<Pressable
+								onPressOut={() =>
+									navigateToProfile((item as { user_id: number }).user_id)
+								}
+								style={({ pressed }) => [
+									styles.card,
+									pressed && styles.cardPressed,
+								]}
+							>
+								<View style={styles.cardHeaderRow}>
+									<View style={styles.avatarCircle}>
 										<Image
 											source={
 												(item as { image_url?: string }).image_url
-												? { uri: `${process.env.EXPO_PUBLIC_API_URL}${(item as { image_url: string }).image_url}` }
-												: { uri:'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png'}
-												}
-												style={{
-												height: responsiveHeight(5),
-												width: responsiveHeight(5),
-												borderRadius: 50,
-												
-												}}
-												/>
-										{/*end of edits */}
-
-										<View
-											style={{
-												maxWidth: responsiveWidth(80),
-												backgroundColor: "transparent",
-												flexDirection: "column",
-											}}
-										>
-											<Text
-												style={{
-													paddingStart: responsiveWidth(2),
-													maxWidth: responsiveWidth(80),
-													backgroundColor: "transparent",
-													verticalAlign: "top",
-												}}
-												numberOfLines={1}
-												ellipsizeMode="tail"
-											>
-												{
-													(item as { first_name: string; last_name: string })
-														.first_name
-												}{" "}
-												{
-													(item as { first_name: string; last_name: string })
-														.last_name
-												}
+													? {
+															uri: `${process.env.EXPO_PUBLIC_API_URL}${(item as { image_url: string }).image_url}`,
+													  }
+													: {
+															uri: "https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png",
+													  }
+											}
+											style={styles.avatarImage}
+										/>
+									</View>
+									<View style={styles.cardTitleBlock}>
+										<Text style={styles.cardTitle} numberOfLines={1}>
+											{(item as { first_name: string; last_name: string }).first_name}{" "}
+											{(item as { first_name: string; last_name: string }).last_name}
+										</Text>
+										{(item as { org_name?: string; email?: string }).org_name ? (
+											<Text style={styles.cardSubtitle} numberOfLines={1}>
+												{(item as { org_name: string }).org_name}
 											</Text>
-											{/* 
-                                    Next item will appear under of name.
-                                */}
-										</View>
-										{/* 
-                                Next item will appear right of name.
-                                Don't
-                            */}
-									</Pressable>
+										) : (item as { email?: string }).email ? (
+											<Text style={styles.cardSubtitle} numberOfLines={1}>
+												{(item as { email: string }).email}
+											</Text>
+										) : null}
+									</View>
 								</View>
-							</>
+							</Pressable>
 						)}
-					></FlatList>
+					/>
 				)}
 			</View>
 		</View>
@@ -225,10 +277,113 @@ const ProfileFollowingScreen: React.FC<ProfileFollowingScreenProps> = ({
 const styles = StyleSheet.create({
 	container: {
 		flex: 1,
-		justifyContent: "flex-start",
-		alignItems: "flex-start",
-		backgroundColor: "white",
-		flexDirection: "column",
+		backgroundColor: "#f8fafc",
+	},
+	tabRow: {
+		flexDirection: "row",
+		width: responsiveWidth(100),
+		paddingHorizontal: responsiveWidth(3),
+		paddingTop: responsiveHeight(1),
+		paddingBottom: responsiveHeight(0.5),
+		backgroundColor: "#f8fafc",
+	},
+	tabButtonWrapper: {
+		flex: 1,
+		marginHorizontal: responsiveWidth(1),
+	},
+	tabButton: {
+		paddingVertical: responsiveHeight(1),
+		borderRadius: 12,
+		alignItems: "center",
+	},
+	tabButtonInactive: {
+		backgroundColor: "#e5e7eb",
+	},
+	tabButtonPressed: {
+		opacity: 0.8,
+	},
+	tabText: {
+		fontWeight: "600",
+		color: "#334155",
+	},
+	tabTextActive: {
+		color: "#ffffff",
+	},
+	listWrap: {
+		flex: 1,
+		width: responsiveWidth(100),
+	},
+	listContent: {
+		paddingHorizontal: responsiveWidth(3),
+		paddingVertical: responsiveHeight(1),
+		gap: responsiveHeight(1),
+	},
+	card: {
+		backgroundColor: "#ffffff",
+		borderRadius: 16,
+		padding: responsiveHeight(1.6),
+		borderWidth: 1,
+		borderColor: "#e5e7eb",
+		shadowColor: "#0f172a",
+		shadowOpacity: 0.08,
+		shadowRadius: 12,
+		shadowOffset: { width: 0, height: 6 },
+		elevation: 4,
+	},
+	cardPressed: {
+		transform: [{ scale: 0.995 }],
+	},
+	cardHeaderRow: {
+		flexDirection: "row",
+		alignItems: "center",
+		gap: responsiveWidth(3),
+	},
+	avatarCircle: {
+		width: responsiveHeight(5.2),
+		height: responsiveHeight(5.2),
+		borderRadius: responsiveHeight(2.6),
+		backgroundColor: "#0ea5e9",
+		alignItems: "center",
+		justifyContent: "center",
+		overflow: "hidden",
+	},
+	avatarImage: {
+		width: "100%",
+		height: "100%",
+		resizeMode: "cover",
+	},
+	avatarInitials: {
+		color: "#ffffff",
+		fontWeight: "700",
+		fontSize: responsiveFontSize(2),
+	},
+	cardTitleBlock: {
+		flex: 1,
+	},
+	cardTitle: {
+		fontSize: responsiveFontSize(2.1),
+		fontWeight: "700",
+		color: "#0f172a",
+	},
+	cardSubtitle: {
+		fontSize: responsiveFontSize(1.6),
+		color: "#64748b",
+		marginTop: 2,
+	},
+	cardBody: {
+		marginTop: responsiveHeight(1),
+		fontSize: responsiveFontSize(1.6),
+		color: "#475569",
+	},
+	emptyText: {
+		textAlign: "center",
+		paddingVertical: responsiveHeight(4),
+		color: "#6B7280",
+	},
+	loadingWrap: {
+		paddingTop: responsiveHeight(8),
+		alignItems: "center",
+		justifyContent: "center",
 	},
 });
 

@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Image, SafeAreaView } from "react-native";
-import { responsiveHeight, responsiveWidth } from "react-native-responsive-dimensions";
 
-
-export type BlobProps = {
-    // Rotation is not required because it is randomized in the Blob component
+type BlobProps = {
     rotationDeg?: string; // Format: '45deg'
     image?: string;
     widthPercentage: number;
     heightPercentage: number;
-    position: { top: number; left: number };
-
+    position: { top: number; left: number} ;
 };
+import { responsiveHeight, responsiveWidth } from "react-native-responsive-dimensions";
+
+
 
 
 

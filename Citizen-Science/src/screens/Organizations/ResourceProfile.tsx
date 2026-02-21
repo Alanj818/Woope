@@ -4,7 +4,10 @@
 import React, {useEffect, useState}from "react";
 import { Text,View, SafeAreaView, ScrollView,StyleSheet, Image ,StatusBar, TouchableOpacity, Button, FlatList, TextInput, Modal} from "react-native";
 import ResourceCard from "../../components/ResourceCard";
-import BackButton from '../../components/BackButton';
+import TopNav from '../../components/TopNav';
+import { LinearGradient } from "expo-linear-gradient";
+import { MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from "expo-sharing";
@@ -26,7 +29,8 @@ interface FileName{
 }
 
 
-export const ResourceProfile = ({ route }: { route: any }) => {
+export const ResourceProfile = ({ route, navigation }: { route: any; navigation: any }) => {
+    const insets = useSafeAreaInsets();
     const [selectedDocuments, setSelectedDocuments] = useState<ResourceInfo>({
         name: "",
         uri: "", 
@@ -158,240 +162,300 @@ export const ResourceProfile = ({ route }: { route: any }) => {
         Sharing.shareAsync(url)
     }
     return(
-        <SafeAreaView style = {styles.container}>
-            <BackButton position={{ top: 5, left: 3 }} />
+        <View style = {styles.container}>
+            <TopNav title="Resource" showBack={true} onBack={() => navigation.goBack()} />
+            <ScrollView style={styles.scrollView}>
                 {/* Resource Card */}
                 <ResourceCard resource_id={route.params.resource_id} org_id={route.params.org_id}/>
-                {/* Resources Container */}
-                <Button title="Upload Files" onPress={() => { uploadPress() }}/>
-                    {/* Divider */}
-                    {/* !TODO: implement severside deletion logic */}
-                <FlatList 
-                    style={styles.flatlist}
-                    data={resourceMedia}
-                    numColumns={1}
-                    keyExtractor={item => String(item.media_id)}
-                    renderItem={({item}) => 
-                    (
-                        <View style={styles.mediarow}>
-                            <View style={styles.postBox}>
-                                <View style={styles.postBoxInner}>
-                                    <Text style={styles.postBoxText}>{item.name}</Text>
+                {/* Upload Button */}
+                <TouchableOpacity style={styles.uploadButton} onPress={() => { uploadPress() }}>
+                    <MaterialIcons name="cloud-upload" size={20} color="#fff" />
+                    <Text style={styles.uploadButtonText}>Upload Files</Text>
+                </TouchableOpacity>
+                {/* Files List */}
+                <View style={styles.filesSection}>
+                    <Text style={styles.filesTitle}>Uploaded Files</Text>
+                    {resourceMedia && resourceMedia.length > 0 ? (
+                        <View>
+                            {resourceMedia.map((item) => (
+                                <View key={String(item.media_id)} style={styles.fileItem}>
+                                    <View style={styles.fileNameContainer}>
+                                        <MaterialIcons name="insert-drive-file" size={20} color="#0084D1" />
+                                        <Text style={styles.fileName}>{item.name}</Text>
+                                    </View>
+                                    <View style={styles.fileActions}>
+                                        <TouchableOpacity 
+                                            onPress={() => pressDownload(item.file_path)}
+                                            style={styles.actionButton}
+                                        >
+                                            <MaterialIcons name="download" size={22} color="#0084D1" />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity 
+                                            onPress={() => pressPreview(item.file_path, item.name)}
+                                            style={styles.actionButton}
+                                        >
+                                            <MaterialIcons name="visibility" size={22} color="#0084D1" />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity 
+                                            onPress={() => pressDelete(item.media_id, item.file_path)}
+                                            style={styles.actionButton}
+                                        >
+                                            <MaterialIcons name="delete" size={22} color="#e74c3c" />
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
-                            </View>
-                            <TouchableOpacity onPress={() => {
-                                pressDownload(item.file_path);
-                            }}>
-                                <AntDesign name="download" size={30}/>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity onPress={() => {
-                                pressPreview(item.file_path, item.name);
-                            }}>
-                                <AntDesign name="eye" size={30}/>
-                            </TouchableOpacity> 
-
-                            <TouchableOpacity onPress={() => {
-                                pressDelete(item.media_id, item.file_path);
-                            }}>
-                                <AntDesign color={"red"} name="close" size={30}/>
-                            </TouchableOpacity>
+                            ))}
                         </View>
-                    )
-                    }/>
+                    ) : (
+                        <Text style={styles.emptyText}>No files uploaded yet</Text>
+                    )}
+                </View>
+            </ScrollView>
 
-                    {/* Webview Modal */}
-                    <Modal visible={isWebModalVisible} animationType='slide' transparent={true}>
-                        <View style={styles.webContainer}>
-                            <View style={styles.webBar}>
-                                <Text style={styles.preview}>{previewName} Preview</Text>
-
-                                <TouchableOpacity onPress={()=> setIsWebModalVisible(false)}>
-                                    <Text style={styles.close}>Close</Text>
-                                </TouchableOpacity>
-                                
-                            </View>
-                            <View style = {styles.webContent}>
-                                <WebView source={{ uri: API_BASE + "/uploads/" + previewLink }} ></WebView>
-                            </View>
+            {/* Webview Modal */}
+            <Modal visible={isWebModalVisible} animationType='slide' transparent={true}>
+                <View style={styles.webContainer}>
+                    <LinearGradient
+                      colors={["rgba(0,132,209,1)", "rgba(0,146,184,1)"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={[styles.webBar, { paddingTop: insets.top, height: insets.top + 56 }]}
+                    >
+                        <View style={styles.webBarInner}>
+                            <TouchableOpacity onPress={()=> setIsWebModalVisible(false)} style={styles.webCloseBtn}>
+                                <MaterialIcons name="arrow-back" size={24} color="#fff" />
+                            </TouchableOpacity>
+                            <Text style={styles.webPreviewTitle}>{previewName}</Text>
                         </View>
-                    </Modal>
+                    </LinearGradient>
+                    <View style = {styles.webContent}>
+                        <WebView source={{ uri: API_BASE + "/uploads/" + previewLink }} ></WebView>
+                    </View>
+                </View>
+            </Modal>
                 
-                    {/* Enter name of file modal */}
-                    <Modal visible={isModalVisible} animationType="fade" transparent={true}>
-                        <View style={styles.modalContainer}>
-                            <View style={styles.modal}>
-                                <Text>Enter Name Of File</Text>
-                                <TextInput onChangeText={(value) => handleInputChange("name", value)}
-                                    maxLength={20}
+            {/* Enter name of file modal */}
+            <Modal visible={isModalVisible} animationType="fade" transparent={true}>
+                <View style={styles.fileModalContainer}>
+                    <View style={styles.fileModal}>
+                        <LinearGradient
+                          colors={["rgba(0,132,209,1)", "rgba(0,146,184,1)"]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 0 }}
+                          style={styles.fileModalHeader}
+                        >
+                            <TouchableOpacity onPress={() => setIsModalVisible(false)} style={styles.fileModalCloseBtn}>
+                                <MaterialIcons name="close" size={24} color="#fff" />
+                            </TouchableOpacity>
+                            <Text style={styles.fileModalTitle}>Name this File</Text>
+                        </LinearGradient>
+                        <ScrollView style={styles.fileModalContent}>
+                            <View style={styles.fileInputGroup}>
+                                <Text style={styles.fileInputLabel}>File Name</Text>
+                                <TextInput 
+                                    onChangeText={(value) => handleInputChange("name", value)}
+                                    maxLength={50}
+                                    placeholder="Enter file name"
                                     multiline={false}
                                     scrollEnabled={false}
-                                    style = {styles.textbox}></TextInput>
-                                <View style={styles.confirm}> 
-                                    <TouchableOpacity onPress={() => setIsModalVisible(false)}>
-                                        <Text style = {styles.cancel}>Cancel</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity onPress={() => save()}>
-                                        <Text style = {styles.upload}>Upload</Text>
-                                    </TouchableOpacity>
-                                </View>
+                                    style={styles.fileInputBox}
+                                />
                             </View>
+                        </ScrollView>
+                        <View style={styles.fileModalButtons}>
+                            <TouchableOpacity style={[styles.fileButton, styles.fileCancelButton]} onPress={() => setIsModalVisible(false)}>
+                                <Text style={styles.fileCancelButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={[styles.fileButton, styles.fileUploadButton]} onPress={() => save()}>
+                                <Text style={styles.fileUploadButtonText}>Upload</Text>
+                            </TouchableOpacity>
                         </View>
-                    </Modal>
-        </SafeAreaView>
+                    </View>
+                </View>
+            </Modal>
+        </View>
     );
 };
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingTop: StatusBar.currentHeight,
-        backgroundColor: "white",
-        
+        backgroundColor: "#f5f5f5",
     },
-    modalContainer: {
+    scrollView: {
         flex: 1,
-        backgroundColor: "white",
-        justifyContent: "center",
-        
     },
-    webBar: {
-        paddingTop: 20,
-        flex: 1,
+    uploadButton: {
         flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 8,
+        backgroundColor: "#0084D1",
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginHorizontal: 16,
+        marginVertical: 16,
+        borderRadius: 8,
+    },
+    uploadButtonText: {
+        color: "#fff",
+        fontSize: 14,
+        fontWeight: "600",
+    },
+    filesSection: {
+        paddingHorizontal: 16,
+        paddingBottom: 32,
+    },
+    filesTitle: {
+        fontSize: 16,
+        fontWeight: "600",
+        color: "#333",
+        marginBottom: 12,
+    },
+    fileItem: {
+        flexDirection: "row",
+        alignItems: "center",
         justifyContent: "space-between",
         backgroundColor: "white",
-        borderBottomColor: "lightgrey",
-        borderBottomWidth: 1,
+        padding: 12,
+        marginBottom: 8,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: "#e0e0e0",
     },
-    webModal: {
+    fileNameContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
         flex: 1,
-        backgroundColor: "white",
-        justifyContent: "center",
     },
-    webContent: {
-        flex: 20,
-        padding: 10,
-        borderRadius: 10,
-        
+    fileName: {
+        fontSize: 14,
+        color: "#333",
+        flex: 1,
+    },
+    fileActions: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+    },
+    actionButton: {
+        padding: 6,
+    },
+    emptyText: {
+        fontSize: 14,
+        color: "#999",
+        textAlign: "center",
+        paddingVertical: 32,
     },
     webContainer: {
         flex: 1,
+        backgroundColor: "#f5f5f5",
+    },
+    webBar: {
+        alignItems: "flex-start",
+        justifyContent: "flex-end",
+        paddingBottom: 8,
+    },
+    webBarInner: {
+        width: "100%",
+        flexDirection: "row",
+        alignItems: "center",
+        height: 44,
+        paddingHorizontal: 16,
+    },
+    webCloseBtn: {
+        marginRight: 8,
+        padding: 6,
+    },
+    webPreviewTitle: {
+        color: "#ffffff",
+        fontSize: 18,
+        fontWeight: "600",
+    },
+    webContent: {
+        flex: 1,
         backgroundColor: "white",
-        marginTop: 20,
-        padding: 20,
     },
-    title: {
-        fontSize: 15,
-        color: '#232f46',
-    },
-    directoryButton: {
+    fileModalContainer: {
         flex: 1,
-        borderRadius: 10,
-        padding: 14,
-        marginVertical: 7,
-        backgroundColor: "lightblue",
-        alignItems: "center",
-        justifyContent: "center",
-        shadowOffset: {
-            width: 1,
-            height: 1,
-        },
-        shadowOpacity: 0.3,
-        shadowRadius: 3,
-        elevation: 9,
+        backgroundColor: "rgba(0,0,0,0.5)",
+        justifyContent: "flex-end",
     },
-    upcomingEvents: {
-        alignItems: 'center', 
-        marginHorizontal:20,
-        marginBottom: 5,
-        padding: 10,
-        borderBottomColor: 'lightgrey',
-        borderBottomWidth: 2,
-    }, 
-    flatlist: {
-        flex: 1
+    fileModal: {
+        backgroundColor: "#f5f5f5",
+        borderTopLeftRadius: 12,
+        borderTopRightRadius: 12,
+        maxHeight: "80%",
     },
-    mediarow: {
+    fileModalHeader: {
         flexDirection: "row",
-        flex: 1,
         alignItems: "center",
-        gap: 10,
-        marginHorizontal: 15,
+        paddingHorizontal: 16,
+        paddingBottom: 8,
+        height: 56,
     },
-    textbox:{
-        borderRadius: 5,
-        borderWidth: 2,
-        flexDirection: "row",
-        borderColor: "lightblue",
-        backgroundColor: "white"
+    fileModalCloseBtn: {
+        marginRight: 12,
+        padding: 6,
     },
-    modal: {
-        backgroundColor: "white",
-        opacity: 1,
-        flexDirection: "column",
-        alignSelf: "center",
-        justifyContent: "center",
-        gap: 10,
-        padding: 30,
-        borderRadius: 10,
-    }, 
-    confirm: {
-        flexDirection: "row",
-        alignContent: "space-between",
-        gap: 30,
+    fileModalTitle: {
+        color: "#ffffff",
+        fontSize: 18,
+        fontWeight: "600",
     },
-    cancel: {
-        fontSize: 20,
-        color: "red"
-    }, 
-    upload: {
-        fontSize: 20,
-        color: "blue"
+    fileModalContent: {
+        backgroundColor: "#f5f5f5",
+        paddingHorizontal: 16,
+        paddingTop: 16,
     },
-    close: {
-        fontSize: 20,
-        color: "red",
+    fileInputGroup: {
+        gap: 8,
+        marginBottom: 16,
     },
-    preview: {
-        fontSize: 20,
-        color: "grey"
-    },
-    postBox: {
-        flex: 1,
-        backgroundColor: "#B4D7EE",
-        borderRadius: 30,
-        paddingVertical: 20,
-        paddingHorizontal: 15,
-        alignItems: "center",
-        justifyContent: "center",
-        alignSelf: "stretch",
-        marginHorizontal: 10,
-        marginBottom: 10,
-        borderWidth: 1,
-        borderColor: "#E7F3FD",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 6,
-        elevation: 5,
-        marginTop: 6,
-      },
-      postBoxInner: {
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: "transparent",
-        alignSelf: "stretch",
-        borderBottomWidth: 1,
-        borderBottomColor: "#D1E3FA",
-      },
-      postBoxText: {
-        fontSize: 16,
+    fileInputLabel: {
+        fontSize: 14,
+        fontWeight: "600",
         color: "#333",
-        padding: 10,
-        backgroundColor: "#FFFFFF",
-        borderRadius: 18,
-        overflow: "hidden",
-        textAlign: "center",
-      }
+    },
+    fileInputBox: {
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: "#0084D1",
+        backgroundColor: "white",
+        fontSize: 14,
+        color: "#333",
+    },
+    fileModalButtons: {
+        flexDirection: "row",
+        gap: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+        paddingBottom: 32,
+    },
+    fileButton: {
+        flex: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        alignItems: "center",
+        justifyContent: "center",
+    },
+    fileCancelButton: {
+        backgroundColor: "#e0e0e0",
+    },
+    fileCancelButtonText: {
+        color: "#333",
+        fontSize: 14,
+        fontWeight: "600",
+    },
+    fileUploadButton: {
+        backgroundColor: "#0084D1",
+    },
+    fileUploadButtonText: {
+        color: "#fff",
+        fontSize: 14,
+        fontWeight: "600",
+    },
 });
 export default ResourceProfile;

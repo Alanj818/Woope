@@ -6,7 +6,7 @@ import React, {useState,useEffect, useContext} from 'react';
 import { View, Text, SafeAreaView, FlatList, TouchableOpacity, StyleSheet, StatusBar, ScrollView } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import OrganizationCard from '../../components/OrganizationCard';
-import BackButton from '../../components/BackButton';
+import TopNav from '../../components/TopNav';
 import EventCard from '../../components/EventCard';
 import CreateResource from '../../components/CreateResource';
 import { Resource } from '../../api/types';
@@ -42,8 +42,9 @@ export const OrganizationProfile = ({ route }: { route: any }) => {
             }
         }
     return(
-        <SafeAreaView style = {styles.container}>
-            <BackButton position={{ top: 5, left: 3 }} />
+        <>
+        <TopNav title="Organization" showBack onBack={() => navigation.goBack()} />
+        <SafeAreaView style={[styles.container, { backgroundColor: 'transparent', marginTop: 0, paddingTop: 0 }]}>
             <ScrollView>
                 {/* Container for organization card */}
                 <View>
@@ -90,6 +91,7 @@ export const OrganizationProfile = ({ route }: { route: any }) => {
                 }/>
             </ScrollView>
         </SafeAreaView>
+        </>
     );
 };
 const styles = StyleSheet.create({

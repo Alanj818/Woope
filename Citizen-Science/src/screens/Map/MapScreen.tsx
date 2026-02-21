@@ -108,12 +108,27 @@ export const MapScreen = () => {
 
 	const fetchPins = async () => {
 		try {
-			setPinLoading(true);
+			let allPins: any[] = [];
+			try {
+				allPins = await getAllPinsNew(setUserToken);
+			} catch (err: any) {
+				console.warn('Failed to fetch pins from backend:', err);
+				// If backend returns 402 (Payment Required) or other error,
+				// fall back to empty list so the map can still render PurpleAir pins.
+				allPins = [];
+			}
 
-			const allPins = await getAllPinsNew(setUserToken);
-			const data = await fetchPurpleAirData();
-			
-			const transformedPins = allPins.map((pin) => ({
+			let data: any[] = [];
+			try {
+				data = await fetchPurpleAirData();
+			} catch (err: any) {
+				console.warn('Failed to fetch PurpleAir data:', err);
+				// If PurpleAir responds with 402 (Payment Required) or any other error,
+				// fall back to an empty array rather than aborting the whole fetch.
+				data = [];
+			}
+
+			const transformedPins = allPins.map((pin: any) => ({
 				pin_id: pin.pin_id,
 				name: pin.name,
 				date: new Date(pin.datebegin).toISOString().split('T')[0],
@@ -128,32 +143,36 @@ export const MapScreen = () => {
 				},
 			}));
 
-			
-			const purpleAirPins = data.map((sensorData, index) => {
-				const sensor = sensorData.sensor;
-
-				if (!sensor || !sensor.latitude || !sensor.longitude) {
-					return null; // skip, some data is missing
-				}
-
-
-
-				return {
-					pin_id: -(index + 1), // Negative IDs to distinguish from database pins
-					name: sensor?.name || `PurpleAir Sensor ${index + 1}`,
-					date: new Date().toISOString().split('T')[0],
-					description: `Air quality sensor, Air Temp: ${sensor.temperature}°F, PM2.5: ${sensor['pm2.5_atm']} µg/m³`,
-					tag: "Weather",
-					image: null,
-					location: { latitude: sensor?.latitude, longitude: sensor?.longitude },
-				};
-        	});
+			let finalPins = [];
+			const purpleAirPins = (data || []).map((sensorData, index) => {
+            console.log('Sensor data:', sensorData);
+            
+            // PurpleAir API structure: { sensor: { ... } }
+            const sensor = sensorData.sensor;
+            
+            return {
+                pin_id: -(index + 1), // Negative IDs to distinguish from database pins
+                name: sensor?.name || `PurpleAir Sensor ${index + 1}`,
+                date: new Date().toISOString().split('T')[0],
+                description: `Air quality sensor, Air Temp: ${sensor.temperature}°F, PM2.5: ${sensor['pm2.5_atm']} µg/m³`,
+                tag: "Weather",
+                image: null,
+                location: {
+                    latitude: sensor?.latitude,
+                    longitude: sensor?.longitude,
+                },
+            };
+        });
 			
 		
-			const combinedPins = [...transformedPins, ...purpleAirPins]
+			finalPins = [...transformedPins, ...purpleAirPins];
 
-			setPins(combinedPins); // Spread operator ensures a new array
-			setFilteredPins(combinedPins);
+			if ((transformedPins.length === 0) && (purpleAirPins.length === 0)) {
+				console.warn('No pins returned from backend or PurpleAir (both empty).');
+			}
+
+			setPins([...finalPins]); // Spread operator ensures a new array
+			setFilteredPins([...finalPins]);
 
 			//console.log('\nPins (from setPins) : ', pins)
 			//console.log("\nFiltered Pins (from setFilteredPins):", filteredPins)
@@ -211,7 +230,7 @@ export const MapScreen = () => {
 		if (filterTag === 'All') {
 			setFilteredPins(pins);
 		} else {
-			setFilteredPins(pins.filter((pin) => pin.tag === filterTag));
+			setFilteredPins(pins.filter((pin: Pin) => pin.tag === filterTag));
 		}
 	}, [pins, filterTag]);
 
@@ -514,6 +533,10 @@ export const MapScreen = () => {
 
 		try {
 			// Call the API to update the pin in the database (assume updatePinNew exists)
+			if (!selectedPin) {
+				alert('No pin selected for update.');
+				return;
+			}
 			const updatedPin = await updatePinNew(
 				selectedPin.pin_id, // Use the pin ID of the selected pin
 				formData.name,
@@ -535,7 +558,7 @@ export const MapScreen = () => {
 
 			// Update the pin in the frontend state
 			setPins((prev) =>
-				prev.map((pin) =>
+				prev.map((pin: Pin) =>
 					pin.pin_id === updatedPin.pin_id
 						? {
 							...pin,
@@ -612,7 +635,7 @@ export const MapScreen = () => {
 			{/* Map */}
 			{initialRegion && (
 				<MapView
-					key={filteredPins.map((pin) => pin.name).join('-')} // Generate a unique key
+					key={filteredPins.map((pin: Pin) => pin.name).join('-')} // Generate a unique key
 					style={styles.map}
 					initialRegion={initialRegion}
 					onPress={handleMapPress}
@@ -623,7 +646,7 @@ export const MapScreen = () => {
 
 					{/* Render existing pins */}
 					{/*console.log('!!!!Contents of filteredPins:', filteredPins)*/}
-					{filteredPins.map((pin) => {
+					{filteredPins.map((pin: Pin) => {
 						//console.log('Rendering Marker:', pin); // Log each pin being rendered
 						return (
 							<Marker
@@ -908,9 +931,14 @@ export const MapScreen = () => {
 						<TouchableOpacity
 							style={[styles.closeButton, { marginRight: 20 }]}
 							onPress={async () => {
-								console.log('Selected Pin for deletion:', selectedPin.pin_id);
+										if (!selectedPin) {
+											alert('No pin selected to delete.');
+											return;
+										}
 
-								const success = await handleDeletePin(selectedPin.pin_id);
+										console.log('Selected Pin for deletion:', selectedPin.pin_id);
+
+										const success = await handleDeletePin(selectedPin.pin_id);
 
 								if (success) {
 									closeDetailsModal();
