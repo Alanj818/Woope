@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState, useRef } from "react";
+import { LayoutAnimation, Platform, UIManager } from 'react-native';
 import {
   StyleSheet,
   Image,
@@ -42,7 +43,8 @@ import {
   unlikePost,
   getPostLikes,
   getUserLikedPosts,
-} from "../../api/posts";
+} from "../api/posts";
+import { getPostById } from "../api/posts";
 import {
   createComment,
   deleteComment,
@@ -50,27 +52,19 @@ import {
   likeComment,
   unlikeComment,
   getComments,
-} from "../../api/comments";
-import { PdfFile, Post, Comment, PostWithUsername } from "../../api/types";
-import WelcomeBanner from "../../components/WelcomeBanner";
-import FixedSwitch from "../../components/FixedSwitch";
-import { logActivity } from "../../api/activity";
-
-
-
+} from "../api/comments";
+import { PdfFile, Post, Comment, PostWithUsername } from "../api/types";
+import WelcomeBanner from "../components/WelcomeBanner";
+import PostComposer from "../components/PostComposer";
+import FixedSwitch from "../components/FixedSwitch";
+import { logActivity } from "../api/activity";
 const HomeScreen = () => {
   const { userToken, setUserToken } = useContext(AuthContext);
   const [data, setData] = useState(null);
   const decodedToken = userToken ? jwtDecode<AccessToken>(userToken) : null;
-  const userPermissions = decodedToken
-    ? (decodedToken?.permissions)
-    : null;
-  const userCanDeleteAllPosts = userPermissions
-    ? userPermissions.delete_all_posts
-    : false;
-  const userCanEditAllPosts = userPermissions
-    ? userPermissions.edit_all_posts
-    : false;
+  const userPermissions = decodedToken ? decodedToken.permissions : {};
+  const userCanDeleteAllPosts = Boolean(userPermissions?.delete_all_posts);
+  const userCanEditAllPosts = Boolean(userPermissions?.edit_all_posts);
   const userName = decodedToken
     ? decodedToken.firstName + " " + decodedToken.lastName
     : null;
@@ -79,6 +73,12 @@ const HomeScreen = () => {
   const userId = decodedToken ? decodedToken.user_id : NaN;
   const [postAsOrganization, setPostAsOrganization] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
+  // enable LayoutAnimation on Android
+  useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
   const [postText, setPostText] = useState("");
   const [postImages, setPostImages] = useState<string[]>([]);
   const [posts, setPosts] = useState<PostWithUsername[]>([]);
@@ -131,6 +131,24 @@ const HomeScreen = () => {
     await fetchPosts();
     setRefreshing(false);
     await logActivity(userId, `Refreshed post feed.`)
+  };
+
+  useEffect(() => {
+    // animate layout changes only to avoid flicker
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+  }, [isPosting]);
+
+  const openComposer = () => {
+    setIsPosting(true);
+  };
+
+  const closeComposer = () => {
+    setIsPosting(false);
+    setIsEditing(false);
+    setEditingPostId(null);
+    setPostText('');
+    setPostImages([]);
+    setPostPdfs([]);
   };
 
   const pickImage = async () => {
@@ -274,8 +292,19 @@ const HomeScreen = () => {
     }
 
     try {
+      try {
+        await getPostById(editingPostId, setUserToken);
+      } catch (err) {
+        console.error('Post lookup failed before update:', err);
+        setError('Post not found. It may have been deleted.');
+        setIsEditing(false);
+        setEditingPostId(null);
+        setPostText('');
+        return;
+      }
+
       const updatedPost = await updatePost(editingPostId, postText, setUserToken); // Adjust parameters as needed
-      await logActivity(userId, `User edited post with id ${editingPostId}`)
+      await logActivity(userId, `User edited post with id ${editingPostId}`);
       fetchPosts();
 
       // Reset the form and editing state
@@ -286,7 +315,7 @@ const HomeScreen = () => {
       setPostPdfs([]);
       setIsPosting(false);
     } catch (error) {
-      console.error("Failed to update the post:", error);
+  console.error("Failed to update the post:", error);
     }
   };
 
@@ -432,8 +461,38 @@ const HomeScreen = () => {
                   </Text>
                 </View>
               </View>
-              {item.content && (
-                <Text style={styles.postText}>{item.content}</Text>
+              {isEditing && editingPostId === item.post_id ? (
+                <View style={{ width: '100%' }}>
+                  <TextInput
+                    style={[styles.input, { marginBottom: 8 }]}
+                    value={postText}
+                    onChangeText={setPostText}
+                    multiline
+                    numberOfLines={3}
+                  />
+                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+                    <TouchableOpacity
+                      style={[styles.postButton, { backgroundColor: '#ccc', marginRight: 8 }]}
+                      onPress={() => {
+                        setIsEditing(false);
+                        setEditingPostId(null);
+                        setPostText('');
+                      }}
+                    >
+                      <Text style={[styles.postButtonText, { color: '#333' }]}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.postButton}
+                      onPress={handleUpdatePost}
+                    >
+                      <Text style={styles.postButtonText}>Save</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ) : (
+                item.content && (
+                  <Text style={styles.postText}>{item.content}</Text>
+                )
               )}
               {item.image?.length > 0 && (
                 <FlatList
@@ -517,63 +576,32 @@ const HomeScreen = () => {
           ListHeaderComponent={
             <>
               <Weather />
-              <TouchableOpacity
-                style={styles.postBox}
-                onPress={() => setIsPosting(true)}
-              >
-                <View style={styles.postBoxInner}>
-                  <Text style={styles.postBoxText}>What's on your mind?</Text>
-                </View>
-              </TouchableOpacity>
-              {isPosting && (
-                <View style={styles.inputContainer}>
-                  <TextInput
-                    ref={postTextInputRef}
-                    style={styles.input}
-                    placeholder="What's on your mind?"
-                    value={postText}
-                    onChangeText={setPostText}
-                    multiline
-                    numberOfLines={4}
-                  />
-                  <View style={styles.iconsContainer}>
-                    <TouchableOpacity onPress={pickImage}>
-                      <Text>🖼️</Text>
+              <View style={styles.listCard}>
+                <View style={styles.listCardInner}>
+                  {!isPosting ? (
+                    <TouchableOpacity style={{ flex: 1 }} onPress={openComposer}>
+                      <Text style={[styles.listCardText, { fontSize: 18 }]}>What's on your mind?</Text>
                     </TouchableOpacity>
-                    {postImages.map((uri, index) => (
-                      <View key={index}>
-                        <Text>Image {index + 1}</Text>
-                      </View>
-                    ))}
-                    <TouchableOpacity onPress={pickPdf}>
-                      <Text>📄</Text>
-                    </TouchableOpacity>
-                    {postPdfs.map((pdf, index) => (
-                      <View key={index}>
-                        <Text>
-                          PDF {index + 1}: {pdf.name}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                  {postImages.map((uri, index) => (
-                    <Image
-                      key={index}
-                      source={{ uri }}
-                      style={styles.previewImage}
-                    />
-                  ))}
-                  <TouchableOpacity
-                    style={styles.postButton}
-                    onPress={isEditing ? handleUpdatePost : handleCreatePost}
-                  >
-                    <Text style={styles.postButtonText}>
-                      {isEditing ? "UPDATE" : "POST"}
-                    </Text>
-                  </TouchableOpacity>
-                  {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                  ) : (
+                    <View style={{ flex: 1 }}>
+                      <PostComposer
+                        text={postText}
+                        setText={setPostText}
+                        images={postImages}
+                        pdfs={postPdfs}
+                        pickImage={pickImage}
+                        pickPdf={pickPdf}
+                        onSubmit={isEditing ? handleUpdatePost : handleCreatePost}
+                        onCancel={() => {
+                          closeComposer();
+                        }}
+                        isEditing={isEditing}
+                        error={error}
+                      />
+                    </View>
+                  )}
                 </View>
-              )}
+              </View>
             </>
           }
           showsVerticalScrollIndicator={false}
@@ -674,6 +702,42 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     overflow: "hidden",
     textAlign: "center",
+  },
+  /* Resource-style list card used for the post prompt to match Resources tab */
+  listCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    marginHorizontal: 10,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#DCEFFE',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.09,
+    shadowRadius: 6,
+    elevation: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listCardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%'
+  },
+  listCardText: {
+    fontSize: 18,
+    color: '#0D2538',
+    textAlign: 'left',
+    flex: 1,
+    paddingLeft: 4,
+  },
+  chevron: {
+    color: '#4A90E2',
+    fontSize: 22,
+    paddingLeft: 8,
   },
   inputContainer: {
     width: "90%",

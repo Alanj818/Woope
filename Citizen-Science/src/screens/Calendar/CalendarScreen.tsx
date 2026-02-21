@@ -99,7 +99,7 @@ const CalendarScreen = () => {
 
 
   // Navigates to day selected to display all events
-  const onDayPress = useCallback((day) => {
+  const onDayPress = useCallback((day: { dateString: string; day: number; month: number; year: number }) => {
     navigation.navigate("DateScreen", {
         id: userId,
         dateString: day.dateString,
@@ -107,7 +107,7 @@ const CalendarScreen = () => {
         month: day.month,
         year: day.year
     })
-  }, []);
+  }, [navigation, userId]);
 
   // gets all days that have events
   const getGeneralMarks = async() => {
@@ -231,6 +231,36 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 3,
     elevation: 9,
+  },
+  listCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    marginHorizontal: 10,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#DCEFFE',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.09,
+    shadowRadius: 6,
+    elevation: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listCardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%'
+  },
+  listCardText: {
+    fontSize: 18,
+    color: '#0D2538',
+    textAlign: 'left',
+    flex: 1,
+    paddingLeft: 4,
   },
   postBox: {
     backgroundColor: "#B4D7EE",

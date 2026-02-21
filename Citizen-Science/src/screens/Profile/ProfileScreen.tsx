@@ -22,6 +22,8 @@ import {
   unfollowProfile,
 } from "../../api/community";
 import React, { useCallback, useContext, useEffect, useState } from "react";
+import IconButton from "../../components/IconButton";
+import BackButton from "../../components/BackButton";
 
 import { jwtDecode } from "jwt-decode";
 import { AccessToken } from "../../util/token";
@@ -130,6 +132,12 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
         setCommentsMap(commentsMap);
       } catch (error) {
         console.error(error);
+  const msg = String((error && (error as Error).message) || '');
+  if (msg.toLowerCase().includes('post not found') || msg.toLowerCase().includes('posts not found')) {
+          setPosts([]);
+          setCommentsMap({});
+          return;
+        }
         setError("Failed to fetch posts.");
       }
     };
@@ -151,9 +159,18 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
           console.error(error);
           setError("Failed to delete post. Please try again.");
         } finally {
-          getPostByUserId(userID).then((data) => {
-            setPosts(data);
-          });
+          getPostByUserId(userID, setUserToken)
+            .then((data) => {
+              setPosts(data);
+            })
+            .catch((err) => {
+              const msg = String((err && (err as Error).message) || '');
+              if (msg.toLowerCase().includes('post not found') || msg.toLowerCase().includes('posts not found')) {
+                setPosts([]);
+              } else {
+                console.error(err);
+              }
+            });
         }
       }
     };
@@ -290,6 +307,9 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
         }
         ListHeaderComponent={
           <>
+            <View style={styles.headerBar}>
+              <BackButton position={{ top: 1.5, left: 3 }} />
+            </View>
             <View style={styles.profileUser}>
               {/* Profile Picture */}
               <Image
@@ -445,6 +465,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
             )}
           </>
         }
+        ListEmptyComponent={() => (
+          <View style={{ padding: responsiveHeight(4), alignItems: 'center' }}>
+            <Text style={{ fontSize: responsiveFontSize(1.8), color: '#666' }}>No posts yet</Text>
+          </View>
+        )}
         // renderItem={({ item, index }) => {
         //   let marginLeft = 0;
         //   let marginRight = 0;
@@ -729,6 +754,11 @@ const styles = StyleSheet.create({
     width: responsiveWidth(100),
     paddingLeft: responsiveWidth(2),
     flexDirection: "row",
+  },
+  headerBar: {
+    height: responsiveHeight(6),
+    width: responsiveWidth(100),
+    backgroundColor: 'transparent',
   },
   attributes: {
     justifyContent: "flex-start",

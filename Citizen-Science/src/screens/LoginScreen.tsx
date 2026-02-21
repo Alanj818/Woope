@@ -33,7 +33,7 @@ const LoginScreen: React.FC = () => {
     const { setUserToken } = useContext(AuthContext);
     const handleLoginPress = async () => {
         try {
-            const response = await loginUser(email, password);
+            const response = await loginUser(String(email).toLowerCase(), password);
     
             await storeToken('accessToken', response.accessToken);
             await storeToken('refreshToken', response.refreshToken);

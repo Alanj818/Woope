@@ -1,12 +1,14 @@
 import React, {useEffect, useState} from 'react'
 import { useNavigation, useFocusEffect} from '@react-navigation/native';
 import { View, Text, SafeAreaView, FlatList, TouchableOpacity, StyleSheet, StatusBar, ScrollView } from 'react-native';
+import BackButton from '../../components/BackButton';
+import EventCard from '../../components/EventCard';
 import EventCardViewOnly from '../../components/EventCardViewOnly';
 import { Event } from '../../api/types';
 import { getDayEvents, getFollowedEvents, getUserEvents } from '../../api/event';
 import { addDays, set } from 'date-fns';
 
-const DateScreen = ({route}) => {
+const DateScreen = ({ route }: { route: any }) => {
     const navigation = useNavigation<any>();
     let [now, setNow] = useState<Date>();
     let [dayAfter, setDayAfter] = useState<Date>(new Date());
@@ -75,6 +77,7 @@ const DateScreen = ({route}) => {
     return(
         
         <SafeAreaView style={styles.container}>
+            <BackButton position={{ top: 5, left: 3 }} />
              <View>
                 <View style={styles.upcomingEvents}>
                     <Text style={styles.title}>{selectedDate.toLocaleDateString(undefined, {
@@ -90,7 +93,7 @@ const DateScreen = ({route}) => {
             <FlatList
             data={eventData}
             scrollEnabled={true}
-            keyExtractor={(item) => item.event_id} 
+            keyExtractor={(item) => String(item.event_id)} 
             renderItem={({item}) => (
                 <EventCardViewOnly
                     event_id = {item.event_id} 

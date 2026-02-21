@@ -39,7 +39,15 @@ export const getPostByUserId = async (
   userId: number,
   setUserToken: (token: string | null) => void
 ) => {
-  return fetchAPI(`/forum/posts/user/${userId}`, 'GET', null, setUserToken);
+  try {
+    return await fetchAPI(`/forum/posts/user/${userId}`, 'GET', null, setUserToken);
+  } catch (err) {
+    const msg = String((err && (err as Error).message) || '');
+    if (msg.toLowerCase().includes('post not found') || msg.toLowerCase().includes('posts not found')) {
+      return [];
+    }
+    throw err;
+  }
 };
 
 // Delete post

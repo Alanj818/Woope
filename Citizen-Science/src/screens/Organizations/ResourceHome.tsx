@@ -35,6 +35,9 @@ export const ResourceHome = () => {
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView style={styles.scrollView}>
+                <View style={{ paddingHorizontal: 14, paddingVertical: 10 }}>
+                    <Text style={styles.title}>Resources</Text>
+                </View>
                 {/* Followed Groups Button
                 <Pressable onPress={() => navigation.navigate("ManageOrganizations")}> 
                     <View style = {styles.postBox}> 
@@ -44,27 +47,24 @@ export const ResourceHome = () => {
                     </View>
                 </Pressable> */}
                 {/* Followed Groups Button */}
-                <Pressable onPress={() => navigation.navigate("OrganizationFollowed")}> 
-                    <View style = {styles.postBox}> 
-                        <View style = {styles.postBoxInner}>
-                            <Text style={styles.postBoxText}> Followed Groups </Text>
-                        </View>
+                <Pressable onPress={() => navigation.navigate("OrganizationFollowed")} style={({pressed})=>[styles.listCard, pressed && styles.pressed]}> 
+                    <View style={styles.listCardInner}>
+                        <Text style={styles.listCardText}>Followed Groups</Text>
+                        <Text style={styles.chevron}>›</Text>
                     </View>
                 </Pressable>
                 {/* Search Directory Button */}
-                <Pressable onPress={() => navigation.navigate("OrganizationSearch")}>
-                    <View style = {styles.postBox}> 
-                        <View style = {styles.postBoxInner}>
-                            <Text style={styles.postBoxText}> Search Directory </Text>
-                        </View>
+                <Pressable onPress={() => navigation.navigate("OrganizationSearch")} style={({pressed})=>[styles.listCard, pressed && styles.pressed]}> 
+                    <View style={styles.listCardInner}>
+                        <Text style={styles.listCardText}>Search Directory</Text>
+                        <Text style={styles.chevron}>›</Text>
                     </View>
                 </Pressable>
                 {/* Search By Category Button */}
-                <Pressable onPress={() => navigation.navigate("OrganizationCategory")}>
-                    <View style = {styles.postBox}> 
-                        <View style = {styles.postBoxInner}>
-                            <Text style={styles.postBoxText}> Search By Category </Text>
-                        </View>
+                <Pressable onPress={() => navigation.navigate("OrganizationCategory")} style={({pressed})=>[styles.listCard, pressed && styles.pressed]}> 
+                    <View style={styles.listCardInner}>
+                        <Text style={styles.listCardText}>Search By Category</Text>
+                        <Text style={styles.chevron}>›</Text>
                     </View>
                 </Pressable>
             {/* only shows if featured organizations is not empty */}
@@ -77,7 +77,7 @@ export const ResourceHome = () => {
                 data={data}
                 numColumns={1}
                 horizontal={true}
-                keyExtractor={item => item.org_id}
+                keyExtractor={item => String(item.org_id)}
                 renderItem={({item})=>(
                     <FeaturedOrganizationCard org_id= {item.org_id} name={item.name} tagline={item.tagline} text_description={item.text_description} image_path={item.image_path}/>
                 )}
@@ -160,5 +160,58 @@ const styles = StyleSheet.create({
         overflow: "hidden",
         textAlign: "center",
       }
+    ,
+
+    listCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        paddingVertical: 16,
+        paddingHorizontal: 18,
+        marginHorizontal: 14,
+        marginBottom: 14,
+        borderWidth: 1,
+        borderColor: '#DCEFFE',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.09,
+        shadowRadius: 6,
+        elevation: 3,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    /* left accent stripe */
+    listAccent: {
+        width: 6,
+        backgroundColor: '#4A90E2',
+        borderTopLeftRadius: 14,
+        borderBottomLeftRadius: 14,
+        marginRight: 12,
+        height: '100%'
+    },
+    listCardText: {
+        fontSize: 18,
+        color: '#0D2538',
+        textAlign: 'left',
+        flex: 1,
+        paddingLeft: 4,
+    },
+    pressed: {
+        opacity: 0.85,
+        transform: [{ scale: 0.997 }],
+    }
+    ,
+    /* header replaced with shared ScreenHeader component for consistent top bar (maybe we can change this later) */
+    /* searchBar removed to match app design */
+    listCardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%'
+    },
+    chevron: {
+        color: '#4A90E2',
+        fontSize: 22,
+        paddingLeft: 8,
+    }
 });
 export default ResourceHome;

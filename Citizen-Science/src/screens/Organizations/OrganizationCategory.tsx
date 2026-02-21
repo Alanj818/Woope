@@ -8,6 +8,7 @@
 import React, {useState, useEffect} from 'react';
 import { View, Text, StyleSheet, StatusBar, ScrollView, Pressable, SafeAreaView, TouchableOpacity, FlatList} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import BackButton from '../../components/BackButton';
 import { Category } from '../../api/types';
 import { getAllCategories } from '../../api/organizations';
 export const OrganizationCategory = () => {
@@ -28,6 +29,7 @@ export const OrganizationCategory = () => {
     if (data[0] !== undefined){
         return(
             <SafeAreaView style={styles.container}>
+                <BackButton position={{ top: 5, left: 3 }} />
                 {/*
                     using a flatlist to display categories, keyextractor to use the categoy_id as key
                     then passing the category_id that was clicked to next screen
@@ -35,13 +37,15 @@ export const OrganizationCategory = () => {
                 <FlatList
                     data={data}
                     numColumns={1}
-                    keyExtractor={item => item.category_id}
+                    keyExtractor={item => String(item.category_id)}
+                    contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}
                     renderItem={({item}) => (
-                    <TouchableOpacity style={styles.postBox} onPress={() => navigation.navigate("SpecificCategory",{category: item.category_id})}> 
-                        <View style = {styles.postBoxInner}>
-                            <Text style={styles.postBoxText}>{item.name}</Text>
+                    <Pressable onPress={() => navigation.navigate("SpecificCategory",{category: item.category_id})} style={({pressed})=>[styles.listCard, pressed && styles.pressed]}> 
+                        <View style={styles.listCardInner}>
+                            <Text style={styles.listCardText}>{item.name}</Text>
+                            <Text style={styles.chevron}>›</Text>
                         </View>
-                    </TouchableOpacity>
+                    </Pressable>
                     )}
                 />
             </SafeAreaView>
@@ -57,8 +61,8 @@ export const OrganizationCategory = () => {
 };
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
-        paddingTop: StatusBar.currentHeight,
+    flex: 1,
+    paddingTop: (StatusBar.currentHeight || 20) + 48,
         backgroundColor: "white",
     },
     scrollView: {
@@ -129,6 +133,47 @@ const styles = StyleSheet.create({
         borderRadius: 18,
         overflow: "hidden",
         textAlign: "center",
+    }
+    ,
+    listCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
+        paddingVertical: 16,
+        paddingHorizontal: 18,
+        marginHorizontal: 14,
+        marginBottom: 14,
+        borderWidth: 1,
+        borderColor: '#DCEFFE',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.09,
+        shadowRadius: 6,
+        elevation: 3,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    /* accent removed to match ResourceHome */
+    listCardText: {
+        fontSize: 18,
+        color: '#0D2538',
+        textAlign: 'left',
+        flex: 1,
+        paddingLeft: 4,
+    },
+    pressed: {
+        opacity: 0.85,
+        transform: [{ scale: 0.997 }],
+    },
+    listCardInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        width: '100%'
+    },
+    chevron: {
+        color: '#4A90E2',
+        fontSize: 22,
+        paddingLeft: 8,
     }
 });
 export default OrganizationCategory
