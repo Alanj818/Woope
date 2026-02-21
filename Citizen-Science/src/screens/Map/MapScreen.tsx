@@ -131,7 +131,13 @@ export const MapScreen = () => {
 			
 			const purpleAirPins = data.map((sensorData, index) => {
 				const sensor = sensorData.sensor;
-            
+
+				if (!sensor || !sensor.latitude || !sensor.longitude) {
+					return null; // skip, some data is missing
+				}
+
+
+
 				return {
 					pin_id: -(index + 1), // Negative IDs to distinguish from database pins
 					name: sensor?.name || `PurpleAir Sensor ${index + 1}`,

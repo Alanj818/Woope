@@ -1,5 +1,5 @@
 import React, {useState,  useCallback, useEffect, useContext} from 'react';
-import {StyleSheet, View, Text, TouchableOpacity, Button, Dimensions} from 'react-native';
+import {StyleSheet, View, Text, TouchableOpacity, Button, Dimensions, Image} from 'react-native';
 import {Calendar} from 'react-native-calendars';
 import { useFocusEffect } from '@react-navigation/native';
 import { getDates, getFollowedDates, getUserDates } from '../../api/event';
@@ -141,11 +141,12 @@ const CalendarScreen = () => {
     <SafeAreaView>
       <ScreenHeader navigation={null} />
 
-      <View>
-        <Text style={styles.headerTile}> My Calendar </Text>
+      {/* Header */}
+      <View style={styles.headerContainer}>
+        <Text style={styles.headerTitle}> Calendar </Text>
 
-        <TouchableOpacity style={styles.headerButton} onPress={() => console.log('Button pressed')}>
-          <Text style={styles.headerButtonText}>+</Text>
+        <TouchableOpacity style={styles.headerButton} onPress={() => navigation.navigate('CreateUserEvent')}>
+          <Image style={styles.addButton} source={require("../../../assets/addButton.png")}/>
         </TouchableOpacity>
 
 
@@ -173,14 +174,12 @@ const CalendarScreen = () => {
               />
           </View>
 
-        {/* <TouchableOpacity style={styles.postBox} onPress={() => setModalVisible(true)}>
-          <View style={styles.postBoxInner}>
-            <Text style={styles.postBoxText}>
-                  Create Personal Event
-            </Text>
-          </View>
-        </TouchableOpacity> */}
+        {/* Events */}
+        <View>
+          <Text style ={styles.eventHeader}>Upcoming Events</Text>
+        </View>
 
+      
       </View>
       <CreateUserEvent user_id={userId} isVisible={modalVisible} onClose={() => setModalVisible(false)} />
     </SafeAreaView>
@@ -199,6 +198,9 @@ const styles = StyleSheet.create({
     width: screenWidth,
     flexDirection: 'column',
     backgroundColor: 'white',
+  },
+  headerContainer: {
+    paddingBottom:20,
   },
   calendarContainer: {
     paddingHorizontal: 10,
@@ -277,10 +279,11 @@ postBoxText: {
   },
 
   headerTitle: {
-    flex: 1,
     textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 25,
+    fontFamily: "Inter-Regular",
+    marginLeft: -270, 
+    marginTop: 10, 
   },
 
   headerButton: {
@@ -293,5 +296,18 @@ postBoxText: {
     fontSize: 22,
     fontWeight: '600',
   },
+
+  eventHeader:{
+    textAlign: 'center',
+    fontSize: 20,
+    fontFamily: "Inter-Regular",
+    marginLeft: -210, 
+    marginTop: 10, 
+  },
+
+  addButton:{
+    width: 70,
+    height: 70,
+  }
 
 });

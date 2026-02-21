@@ -10,7 +10,6 @@ import React from "react";
 import { usePalette} from '../theme/paletteController'
 
 interface ScreenHeaderProps {
-	title: string;
 	navigation: any;
 }
 

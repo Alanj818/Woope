@@ -23,6 +23,7 @@ import FeatureOrganization from '../screens/Organizations/FeatureOrganization';
 import EventHome from '../screens/Events/EventHome';
 import ReportScreen from '../screens/ReportScreen';
 import DateScreen from '../screens/Calendar/DateScreen';
+import CreateUserEvent from '../screens/Calendar/CreateUserEvent'
 
 import ProfileScreen from '../screens/Profile/ProfileScreen';
 import { AuthContext } from "../util/AuthContext";
@@ -72,6 +73,7 @@ const ResourceStackScreen = () => (
         <ResourceStack.Screen name="CreateCategory" component={CreateCategory} />
         <ResourceStack.Screen name="FeatureOrganization" component={FeatureOrganization} />
         <ResourceStack.Screen name="EventHome" component={EventHome}/>
+        <ResourceStack.Screen name="CreateUserEvent" component={CreateUserEvent} />
     </ResourceStack.Navigator>
 )
 
@@ -84,11 +86,7 @@ const ProfileStackScreen = () => {
 
   return (
     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
-      <ProfileStack.Screen
-        name="ProfileMain"
-        component={ProfileScreen}
-        initialParams={{ userID: currentUserID }}
-      />
+      <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} initialParams={{ userID: currentUserID }}/>
     </ProfileStack.Navigator>
   );
 };

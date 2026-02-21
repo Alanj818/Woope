@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Modal, View, TextInput, Button, StyleSheet, SafeAreaView, Text } from "react-native";
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import DateTimePicker, {DateTimePickerEvent} from "@react-native-community/datetimepicker";
 import { createUserEvents } from "../../api/event";
 
@@ -9,13 +10,8 @@ interface EventInfo {
   description: string;
 }
 
-interface ModalProps {
-  user_id: number;
-  isVisible: boolean;
-  onClose: () => void;
-}
 
-const CreateUserEvent: React.FC<ModalProps> = ({ user_id, isVisible, onClose }) => {
+const CreateUserEvent = ({route, navigation}: Props) => {
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState<false | "start" | "end">(false);
