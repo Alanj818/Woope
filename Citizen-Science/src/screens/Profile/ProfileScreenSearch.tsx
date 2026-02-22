@@ -7,7 +7,6 @@ import {
 	Pressable,
 	Image,
 } from "react-native";
-import { useEffect, useMemo } from "react";
 import {
 	responsiveFontSize,
 	responsiveHeight,

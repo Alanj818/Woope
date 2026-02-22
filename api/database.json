@@ -3,9 +3,10 @@
     "driver": "pg",
     "user": "postgres",
     "password": "postgres",
-    "host": "localhost",
+    "host": "postgres",
+    "port": 5432,
     "database": "postgres",
     "schema": "public"
   },
-  "sql-file" : true
+  "sql-file": true
 }

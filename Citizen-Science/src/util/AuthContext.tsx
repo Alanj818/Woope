@@ -5,11 +5,13 @@ import { refreshAccessToken } from "./fetchWithToken";
 interface AuthContextType {
 	userToken: string | null;
 	setUserToken: (token: string | null) => void;
+	isAuthLoading: boolean;
 }
 
 const defaultAuthContextValue: AuthContextType = {
 	userToken: null,
 	setUserToken: () => {},
+	isAuthLoading: true,
 };
 
 export const AuthContext = createContext<AuthContextType>(defaultAuthContextValue);
@@ -20,35 +22,40 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
 	const [userToken, setUserToken] = useState<string | null>(null);
+	const [isAuthLoading, setIsAuthLoading] = useState(true);
 
 	useEffect(() => {
 		const verifyToken = async () => {
 			try {
 				const token = await getToken("accessToken");
 
-				if (token) {
-					const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/auth/verify-access-token`, {
-						method: "POST",
-						headers: {
-							"Content-Type": "application/json",
-						},
-						body: JSON.stringify({ accessToken: token }),
-					});
+				if(!token) return;
 
-					if (response.ok) {
-						setUserToken(token);
-					} else {
-						const refreshToken = await getToken("refreshToken");
-						if (refreshToken) {
-							const refreshedAccessToken = await refreshAccessToken(setUserToken);
-							if (refreshedAccessToken) {
-								setUserToken(refreshedAccessToken);
-							}
-						}
+				const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/auth/verify-access-token`,
+					{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ accessToken: token }),
 					}
+				);
+
+				if (response.ok) {
+					setUserToken(token);
+					return;
 				}
+
+				const refreshToken = await getToken("refreshToken");
+				if(!refreshToken) return;
+
+				const refreshedAccessToken = await refreshAccessToken(setUserToken);
+				if(refreshedAccessToken){
+					setUserToken(refreshedAccessToken);
+				}
+
 			} catch (error) {
 				console.error("Error verifying token:", error);
+			} finally {
+				setIsAuthLoading(false);
 			}
 		};
 
@@ -56,7 +63,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 	}, []);
 
 	return (
-		<AuthContext.Provider value={{ userToken, setUserToken }}>
+		<AuthContext.Provider value={{ userToken, setUserToken, isAuthLoading }}>
 			{children}
 		</AuthContext.Provider>
 	);

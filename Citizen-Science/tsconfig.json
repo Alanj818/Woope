@@ -1,3 +1,4 @@
+//needed for typescript if using Expo
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {

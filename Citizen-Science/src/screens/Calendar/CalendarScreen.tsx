@@ -1,14 +1,17 @@
-import React, {useState, Fragment, useCallback, useMemo, useRef, useEffect, useContext} from 'react';
-import {StyleSheet, View, Text, TouchableOpacity, Dimensions} from 'react-native';
+import React, {useState,  useCallback, useEffect, useContext} from 'react';
+import {StyleSheet, View, Text, TouchableOpacity, Button, Dimensions, Image} from 'react-native';
 import {Calendar} from 'react-native-calendars';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import { getDates, getFollowedDates, getUserDates } from '../../api/event';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { addMonths, DateArg, subMonths} from 'date-fns';
+import { addMonths, getDay, getMonth, subMonths, fromUnixTime, addDays} from 'date-fns';
+import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../../util/AuthContext';
 import { jwtDecode } from 'jwt-decode';
 import { AccessToken } from '../../util/token';
 import CreateUserEvent from './CreateUserEvent';
+
+import ScreenHeader from '../../components/ScreenHeader';
 
 interface Arguments {
   marked: boolean;
@@ -136,6 +139,20 @@ const CalendarScreen = () => {
 
   return (
     <SafeAreaView>
+      <ScreenHeader navigation={null} />
+
+      {/* Header */}
+      <View style={styles.headerContainer}>
+        <Text style={styles.headerTitle}> Calendar </Text>
+
+        <TouchableOpacity style={styles.headerButton} onPress={() => navigation.navigate('CreateUserEvent')}>
+          <Image style={styles.addButton} source={require("../../../assets/addButton.png")}/>
+        </TouchableOpacity>
+
+
+      </View>
+
+      {/* calendar */}
       <View style={styles.container}> 
         <View style={styles.calendarContainer}>
             <Calendar
@@ -156,11 +173,13 @@ const CalendarScreen = () => {
                 markedDates={marks}
               />
           </View>
-        <TouchableOpacity style={styles.listCard} onPress={() => setModalVisible(true)}>
-          <View style={styles.listCardInner}>
-            <Text style={styles.listCardText}>Create Personal Event</Text>
-          </View>
-        </TouchableOpacity>
+
+        {/* Events */}
+        <View>
+          <Text style ={styles.eventHeader}>Upcoming Events</Text>
+        </View>
+
+      
       </View>
       <CreateUserEvent user_id={userId} isVisible={modalVisible} onClose={() => setModalVisible(false)} />
     </SafeAreaView>
@@ -171,11 +190,17 @@ export default CalendarScreen;
 const screenWidth = Dimensions.get('window').width;
 const screenHeight = Dimensions.get('window').height;
 const styles = StyleSheet.create({
+  text:{
+    fontFamily: "Inter-Regular",
+  },
   container: {
     height: screenHeight,
     width: screenWidth,
     flexDirection: 'column',
     backgroundColor: 'white',
+  },
+  headerContainer: {
+    paddingBottom:20,
   },
   calendarContainer: {
     paddingHorizontal: 10,
@@ -272,5 +297,47 @@ postBoxText: {
     borderRadius: 18,
     overflow: "hidden",
     textAlign: "center",
-}
+},
+ header: {
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+    backgroundColor: '#fff',
+  },
+
+  headerTitle: {
+    textAlign: 'center',
+    fontSize: 25,
+    fontFamily: "Inter-Regular",
+    marginLeft: -270, 
+    marginTop: 10, 
+  },
+
+  headerButton: {
+    position: 'absolute',
+    right: 16,
+    padding: 8,
+  },
+
+  headerButtonText: {
+    fontSize: 22,
+    fontWeight: '600',
+  },
+
+  eventHeader:{
+    textAlign: 'center',
+    fontSize: 20,
+    fontFamily: "Inter-Regular",
+    marginLeft: -210, 
+    marginTop: 10, 
+  },
+
+  addButton:{
+    width: 70,
+    height: 70,
+  }
+
 });

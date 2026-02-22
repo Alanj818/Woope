@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { createPinNew, getAllPinsNew, deletePinNew, updatePinNew } from '../../api/pins';
-import {fetchPurpleAirData} from './purpleair'
-
-
+import {fetchPurpleAirData} from '../../api/purpleair'
 
 import {
 	View,
@@ -15,12 +13,13 @@ import {
 	Text,
 	ScrollView,
 	Alert,
+	ActivityIndicator,
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
-import * as Camera from 'expo-camera';
+//import * as Camera from 'expo-camera';
 import DropDownPicker from 'react-native-dropdown-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as MediaLibrary from 'expo-media-library';
@@ -61,39 +60,39 @@ export const MapScreen = () => {
 	const { userToken, setUserToken } = useContext(AuthContext);
 	const decodedToken = userToken ? jwtDecode<AccessToken>(userToken) : null;
 	const userId = decodedToken ? decodedToken.user_id : NaN;
+
+    const [loading, setLoading] = useState(true);     // Entire screen loading
+    const [pinLoading, setPinLoading] = useState(false); // Refreshing pins only
+
 	const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
 	const [initialRegion, setInitialRegion] = useState<Region | null>(null);
+
 	const [pins, setPins] = useState<Pin[]>([]);
 	const [filteredPins, setFilteredPins] = useState<Pin[]>([]);
-	const [filterModalVisible, setFilterModalVisible] = useState(false);
 
+	const [filterModalVisible, setFilterModalVisible] = useState(false);
 	const [modalVisible, setModalVisible] = useState(false);
 	const [detailsVisible, setDetailsVisible] = useState(false); // For the sliding info modal
+
 	const [showDatePicker, setShowDatePicker] = useState(false);
 	const [selectedPin, setSelectedPin] = useState<Pin | null>(null); // Pin selected for details
 	const [formLocation, setFormLocation] = useState<Location | null>(null);
+
 	const [isMarkerPressed, setIsMarkerPressed] = useState(false);
-	const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
 	const [isEditMode, setIsEditMode] = useState(false);
-	const [formData, setFormData] = useState<{
-		name: string;
-		date: string;
-		description: string;
-		tag: string;
-		image: string | null; // Allow both string and null
-		location: { latitude: number; longitude: number } | null;
-	}>({
-		name: '',
-		date: '',
-		description: '',
-		tag: 'General',
-		image: null,
-		location: null,
-	});
 	const [filterTag, setFilterTag] = useState('All'); // For filtering pins
 
-	// Dropdown state for Tag Picker
-	const [dropdownOpen, setDropdownOpen] = useState(false);
+	const isMarkerPressedRef = useRef(false);
+
+	const [formData, setFormData] = useState({
+        name: '',
+        date: '',
+        description: '',
+        tag: 'General',
+        image: null as string | null,
+        location: null as Location | null,
+    });
+
 	const [tagItems, setTagItems] = useState([
 		{ label: 'General', value: 'General' },
 		{ label: 'Weather', value: 'Weather' },
@@ -101,6 +100,7 @@ export const MapScreen = () => {
 		{ label: 'Workshop', value: 'Workshop' },
 		{ label: 'Hazard', value: 'Hazard' },
 		{ label: 'Mutual Aid', value: 'Mutual Aid' },
+		{ label: 'Nasa', value: 'Nasa'}
 	]);
 
 
@@ -108,12 +108,27 @@ export const MapScreen = () => {
 
 	const fetchPins = async () => {
 		try {
-			const allPins = await getAllPinsNew(setUserToken);
+			let allPins: any[] = [];
+			try {
+				allPins = await getAllPinsNew(setUserToken);
+			} catch (err: any) {
+				console.warn('Failed to fetch pins from backend:', err);
+				// If backend returns 402 (Payment Required) or other error,
+				// fall back to empty list so the map can still render PurpleAir pins.
+				allPins = [];
+			}
 
+			let data: any[] = [];
+			try {
+				data = await fetchPurpleAirData();
+			} catch (err: any) {
+				console.warn('Failed to fetch PurpleAir data:', err);
+				// If PurpleAir responds with 402 (Payment Required) or any other error,
+				// fall back to an empty array rather than aborting the whole fetch.
+				data = [];
+			}
 
-			const data = await fetchPurpleAirData();
-			
-			const transformedPins = allPins.map((pin) => ({
+			const transformedPins = allPins.map((pin: any) => ({
 				pin_id: pin.pin_id,
 				name: pin.name,
 				date: new Date(pin.datebegin).toISOString().split('T')[0],
@@ -129,7 +144,7 @@ export const MapScreen = () => {
 			}));
 
 			let finalPins = [];
-			const purpleAirPins = data.map((sensorData, index) => {
+			const purpleAirPins = (data || []).map((sensorData, index) => {
             console.log('Sensor data:', sensorData);
             
             // PurpleAir API structure: { sensor: { ... } }
@@ -152,74 +167,89 @@ export const MapScreen = () => {
 		
 			finalPins = [...transformedPins, ...purpleAirPins];
 
+			if ((transformedPins.length === 0) && (purpleAirPins.length === 0)) {
+				console.warn('No pins returned from backend or PurpleAir (both empty).');
+			}
+
 			setPins([...finalPins]); // Spread operator ensures a new array
 			setFilteredPins([...finalPins]);
 
 			//console.log('\nPins (from setPins) : ', pins)
 			//console.log("\nFiltered Pins (from setFilteredPins):", filteredPins)
 
-			return finalPins;
+			//return finalPins;
 
 		} catch (error) {
 			console.error('Error fetching all pins:', error);
+		} finally {
+			setPinLoading(false);
 		}
 	};
 	
+	//Intitial Load (location + Pins)
+	 useEffect(() => {
+        const loadEverything = async () => {
+            try {
+                // 1. Location permission
+                let { status } = await Location.requestForegroundPermissionsAsync();
+                if (status !== "granted") {
+                    console.log("Location permission denied");
+                    setLoading(false);
+                    return;
+                }
 
-				
-	// If fetchPins runs before the map is fully initialized, the pins might not render.
-	useEffect(() => {
-		if (initialRegion) {
-			fetchPins();
-		}
-	}, [initialRegion]);
+                // 2. Get current location
+                const loc = await Location.getCurrentPositionAsync({});
+                setCurrentLocation(loc.coords);
 
-	useEffect(() => {
-		fetchPins().then((pins) => {
-			//console.log(pins); // Access the resolved array
-		});
-	}, []);
+                setInitialRegion({
+                    latitude: loc.coords.latitude,
+                    longitude: loc.coords.longitude,
+                    latitudeDelta: 0.005,
+                    longitudeDelta: 0.005,
+                });
 
-	useEffect(() => {
-		//console.log('\nUpdated Pins:', pins);
-		//console.log('\nUpdated Filtered Pins:', filteredPins);
-	}, [pins, filteredPins]);
+                // 3. Load pins
+                await fetchPins();
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false); 
+            }
+        };
 
-	// End Fetch Pins
+        loadEverything();
+    }, []);
 
-	useEffect(() => {
-		const getLocation = async () => {
-			let { status } = await Location.requestForegroundPermissionsAsync();
-			if (status !== 'granted') {
-				console.log('Permission to access location was denied');
-				return;
-			}
+	
+	
 
-			let location = await Location.getCurrentPositionAsync({});
-			setCurrentLocation(location.coords);
-
-			setInitialRegion({
-				latitude: location.coords.latitude,
-				longitude: location.coords.longitude,
-				latitudeDelta: 0.005,
-				longitudeDelta: 0.005,
-			});
-		};
-
-		getLocation();
-	}, []);
-
+	//filtering
 	useEffect(() => {
 		// Filter pins based on the selected tag
 		if (filterTag === 'All') {
 			setFilteredPins(pins);
 		} else {
-			setFilteredPins(pins.filter((pin) => pin.tag === filterTag));
+			setFilteredPins(pins.filter((pin: Pin) => pin.tag === filterTag));
 		}
 	}, [pins, filterTag]);
 
 
-	const isMarkerPressedRef = useRef(false);
+	//Loading 
+	 if (loading) {
+        return (
+            <View style={{
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+                backgroundColor: "white",
+            }}>
+                <ActivityIndicator size="large" color="#ff8c00" />
+                <Text style={{ marginTop: 10 }}>Loading Map...</Text>
+            </View>
+        );
+    }
+	
 
 	const handleMarkerPress = (pin: Pin) => {
 		console.log('Marker pressed:', pin);
@@ -503,6 +533,10 @@ export const MapScreen = () => {
 
 		try {
 			// Call the API to update the pin in the database (assume updatePinNew exists)
+			if (!selectedPin) {
+				alert('No pin selected for update.');
+				return;
+			}
 			const updatedPin = await updatePinNew(
 				selectedPin.pin_id, // Use the pin ID of the selected pin
 				formData.name,
@@ -524,7 +558,7 @@ export const MapScreen = () => {
 
 			// Update the pin in the frontend state
 			setPins((prev) =>
-				prev.map((pin) =>
+				prev.map((pin: Pin) =>
 					pin.pin_id === updatedPin.pin_id
 						? {
 							...pin,
@@ -583,10 +617,25 @@ export const MapScreen = () => {
 			</TouchableOpacity>
 
 
+			{/* Loading Screen */}
+            {pinLoading && (
+                <View style={{
+                    position: "absolute",
+                    top: 20,
+                    right: 20,
+                    padding: 10,
+                    backgroundColor: "rgba(255,255,255,0.8)",
+                    borderRadius: 10,
+                    zIndex: 100,
+                }}>
+                    <ActivityIndicator size="small" color="#ff8c00" />
+                </View>
+            )}
+
 			{/* Map */}
 			{initialRegion && (
 				<MapView
-					key={filteredPins.map((pin) => pin.name).join('-')} // Generate a unique key
+					key={filteredPins.map((pin: Pin) => pin.name).join('-')} // Generate a unique key
 					style={styles.map}
 					initialRegion={initialRegion}
 					onPress={handleMapPress}
@@ -597,7 +646,7 @@ export const MapScreen = () => {
 
 					{/* Render existing pins */}
 					{/*console.log('!!!!Contents of filteredPins:', filteredPins)*/}
-					{filteredPins.map((pin) => {
+					{filteredPins.map((pin: Pin) => {
 						//console.log('Rendering Marker:', pin); // Log each pin being rendered
 						return (
 							<Marker
@@ -882,9 +931,14 @@ export const MapScreen = () => {
 						<TouchableOpacity
 							style={[styles.closeButton, { marginRight: 20 }]}
 							onPress={async () => {
-								console.log('Selected Pin for deletion:', selectedPin.pin_id);
+										if (!selectedPin) {
+											alert('No pin selected to delete.');
+											return;
+										}
 
-								const success = await handleDeletePin(selectedPin.pin_id);
+										console.log('Selected Pin for deletion:', selectedPin.pin_id);
+
+										const success = await handleDeletePin(selectedPin.pin_id);
 
 								if (success) {
 									closeDetailsModal();

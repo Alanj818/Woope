@@ -1,5 +1,5 @@
 import React from 'react';
-import {Button, SafeAreaView, Text, View, StyleSheet, Platform} from "react-native";
+import {View, StyleSheet} from "react-native";
 import styles from "../StyleSheet";
 import LogoName from "../components/LogoName";
 import CustomButton from "../components/CustomButton";
