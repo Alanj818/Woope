@@ -1,16 +1,21 @@
-import {StyleSheet, Text, View} from 'react-native';
-import {NavigationContainer} from '@react-navigation/native';
-import AppNavigation from '../Citizen-Science/src/Navigation';
-import {AuthProvider} from './src/util/AuthContext';
-import * as React from "react";
-import 'react-native-reanimated';
+import React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import "react-native-reanimated";
+
+import { AuthProvider } from "./src/util/AuthContext";
+import RootNavigator from "./src/navigation/RootNavigator";
+
+import { PaletteProvider} from './src/theme/paletteController';
+
 
 export default function App() {
-	return (
-		<AuthProvider>
-			<NavigationContainer>
-				<AppNavigation/>
-			</NavigationContainer>
-		</AuthProvider>
-	);
+  return (
+    <PaletteProvider>
+      <AuthProvider>
+        <NavigationContainer>
+          <RootNavigator />
+        </NavigationContainer>
+      </AuthProvider>
+    </PaletteProvider>
+  );
 }

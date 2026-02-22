@@ -1,3 +1,4 @@
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import {
   Text,
   Image,
@@ -5,7 +6,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
-  RefreshControl,
   ActivityIndicator,
   Dimensions,
   Modal,
@@ -21,7 +21,6 @@ import {
   getProfile,
   unfollowProfile,
 } from "../../api/community";
-import React, { useCallback, useContext, useEffect, useState } from "react";
 import IconButton from "../../components/IconButton";
 import BackButton from "../../components/BackButton";
 
@@ -31,587 +30,194 @@ import { AuthContext } from "../../util/AuthContext";
 import { useFocusEffect } from "@react-navigation/native";
 import LikeButton from "../../components/LikeButton";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
+import { LinearGradient } from 'expo-linear-gradient';
+import TopNav from '../../components/TopNav';
+import { logoutUser } from '../../api/auth';
+import { deleteToken } from '../../util/token';
+import Popup from '../../components/Popup';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { PdfFile, Post, Comment, PostWithUsername } from "../../api/types";
 import { deletePost, getPostById, getPostByUserId } from "../../api/posts";
 import { getComments, likeComment, unlikeComment } from "../../api/comments";
 import Comments from "../../components/Comments";
 
-interface ProfileScreenProps {
-  route: any;
-  navigation: any;
-}
-
-const ProfileScreen: React.FC<ProfileScreenProps> = ({ route, navigation }) => {
-  const { userID } = route.params;
+const ProfileScreen = ({ navigation, route }: any) => {
   const { userToken, setUserToken } = useContext(AuthContext);
   const decodedToken = userToken ? jwtDecode<AccessToken>(userToken) : null;
-  const currentUserID = decodedToken ? decodedToken.user_id : null;
-  const [profileOwner, setProfileOwner] = useState(false);
-  const [fullyLoaded, setFullyLoaded] = useState(false);
-  const [editFirstName, setFirstName] = useState("");
-  const [editLastName, setLastName] = useState("");
-  const [posts, setPosts] = useState<any[]>([]);
-  const [following, setFollowing] = useState(false);
-  const [followerCount, setFollowerCount] = useState("");
-  const [followingCount, setFollowingCount] = useState("");
-  const [visibleDropdown, setVisibleDropdown] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  const [commentsMap, setCommentsMap] = useState<CommentsMap>({});
-  const [selectedPost, setSelectedPost] = useState<PostWithUsername | null>(
-      null
-    );
-  const [commentsModalVisible, setCommentsModalVisible] = useState(false);
+  const routeUserId = route && route.params && route.params.userID !== undefined ? route.params.userID : null;
+  const userID = typeof routeUserId === 'number' && !isNaN(routeUserId) ? routeUserId : decodedToken ? decodedToken.user_id : NaN;
+  const isOwnProfile = !routeUserId || routeUserId === decodedToken?.user_id;
+
   const [userPfp, setUserPfp] = useState<string | null>(null);
+  const [firstName, setFirstName] = useState<string>('');
+  const [lastName, setLastName] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
+  const [location, setLocation] = useState<string>('');
+  const [followerCount, setFollowerCount] = useState<number>(0);
+  const [followingCount, setFollowingCount] = useState<number>(0);
+  const [postsCount, setPostsCount] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [confirmVisible, setConfirmVisible] = useState<boolean>(false);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  interface CommentsMap {
-      [key: number]: Comment[];
-  }
-
-  {
-    /* Loads profile */
-  }
-  const fetchProfile = useCallback(() => {
-    setFullyLoaded(false);
-    if (userID === currentUserID) {
-      setProfileOwner(true);
-    } else {
-      setProfileOwner(false);
+  const fetchProfile = async () => {
+    if (!userID || isNaN(userID)) {
+      setLoading(false);
+      return;
     }
-    getProfile(userID)
-      .then((data) => {
-        setFirstName(data.user.first_name);
-        setLastName(data.user.last_name);
-
-        //added logic for profile picture, only set userPfp if image_url exists
-        if (data.user.image_url){
-        setUserPfp(`${process.env.EXPO_PUBLIC_API_URL}${data.user.image_url}`);
-        }else{
-        setUserPfp(null); // set to empty string if no profile picture
-        }
-
-        setFollowerCount(data.followerCount.follower_of_count);
-        setFollowingCount(data.followingCount.following_of_count);
-        setFullyLoaded(true);
-      })
-      .catch((error) => {
-        console.error("Error: ", error);
-      });
-    // getPostByUserId(userID).then((data) => {
-    //   setPosts(data);
-    // });
-    fetchPosts()
-    {
-      /* Un-needed api calls if looking at own profile */
-    }
-    if (!profileOwner) {
-      checkFollowStatus(userID, userToken)
-        .then((data) => {
-          if (data !== 0) {
-            if (data.followStatus.status === 1) {
-              setFollowing(true);
-            }
-          } else {
-            setFollowing(false);
-          }
-        })
-        .catch((error) => {
-          console.error("Error: ", error);
-        });
-    }
-  }, [userID, currentUserID]);
-
-  const fetchPosts = async () => {
-      try {
-        const postsList = await getPostByUserId(userID, setUserToken);
-        setPosts(postsList);
-        const commentsMap: CommentsMap = {};
-        for (const post of postsList) {
-          const postComments = await getComments(post.post_id);
-          commentsMap[post.post_id] = postComments;
-        }
-        setCommentsMap(commentsMap);
-      } catch (error) {
-        console.error(error);
-  const msg = String((error && (error as Error).message) || '');
-  if (msg.toLowerCase().includes('post not found') || msg.toLowerCase().includes('posts not found')) {
-          setPosts([]);
-          setCommentsMap({});
-          return;
-        }
-        setError("Failed to fetch posts.");
-      }
-    };
-
-  {
-    /* Reload profile upon focusing screen */
-  }
-  useFocusEffect(fetchProfile);
-
-  const handleDeletePost = async (postToDelete: PostWithUsername) => {
-      setVisibleDropdown(null);
-      if (userID === currentUserID) {
-        try {
-          deletePost(postToDelete.post_id, setUserToken);
-          setPosts((currentPosts) =>
-            currentPosts.filter((post) => post.post_id !== postToDelete.post_id)
-          );
-        } catch (error) {
-          console.error(error);
-          setError("Failed to delete post. Please try again.");
-        } finally {
-          getPostByUserId(userID, setUserToken)
-            .then((data) => {
-              setPosts(data);
-            })
-            .catch((err) => {
-              const msg = String((err && (err as Error).message) || '');
-              if (msg.toLowerCase().includes('post not found') || msg.toLowerCase().includes('posts not found')) {
-                setPosts([]);
-              } else {
-                console.error(err);
-              }
-            });
-        }
-      }
-    };
-
-  const handleAddComment = (postId: number, newComment: Comment) => {
-      setPosts((posts) =>
-        posts.map((post) => {
-          if (post.post_id === postId) {
-            const updatedComments = post.comments
-              ? [...post.comments, newComment]
-              : [newComment];
-            return { ...post, comments: updatedComments };
-          }
-          return post;
-        })
-      );
-    fetchPosts();
-  };
-  
-  const handleDeleteComment = (postId: number, commentId: number) => {
-    fetchPosts();
-  };
-
-  const handleLikeComment = async (commentId: number) => {
-      try {
-        const response = await likeComment(commentId);
-        fetchPosts();
-      } catch (error) {
-        console.error(error);
-        setError("Failed to like post. Please try again.");
-      }
-  };
-
-  const handleUnlikeComment = async (commentId: number) => {
-      try {
-        unlikeComment(commentId);
-        fetchPosts();
-      } catch (error) {
-        console.error(error);
-        setError("Failed to unlike post. Please try again.");
-      }
-    };
-
-  {
-    /* Call followProfile api and client side update screen */
-  }
-  const handleFollowProfile = async () => {
+    setLoading(true);
     try {
-      if (!following) {
-        const user = await followProfile(userID, userToken);
-        setFollowing(true);
+      const data = await getProfile(userID);
+      if (data && data.user) {
+        setFirstName(data.user.first_name || '');
+        setLastName(data.user.last_name || '');
+        setEmail(data.user.email || '');
+        setLocation(data.user.location || data.user.city || '');
+        if (data.user.image_url && process.env.EXPO_PUBLIC_API_URL) {
+          setUserPfp(`${process.env.EXPO_PUBLIC_API_URL}${data.user.image_url}`);
+        } else {
+          setUserPfp(null);
+        }
       }
-    } catch (error) {
-      console.error("Errors: ", error);
+  if (data && data.followerCount) setFollowerCount(data.followerCount.follower_of_count || 0);
+      if (data && data.followingCount) setFollowingCount(data.followingCount.following_of_count || 0);
+  // postsCount may be provided by API
+  if ((data as any).postsCount) setPostsCount((data as any).postsCount || 0);
+    } catch (err) {
+      console.error('Failed to load profile', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  {
-    /* Call unfollowProfile api and client side update screen */
-  }
-  const handleUnfollowProfile = async () => {
+  useEffect(() => {
+    fetchProfile();
+  }, [userID]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchProfile();
+    setRefreshing(false);
+  };
+
+  const doLogout = async () => {
+    const userId = decodedToken ? decodedToken.user_id : null;
+    if (!userId) return;
     try {
-      if (following) {
-        const user = await unfollowProfile(userID, userToken);
-        setFollowing(false);
-      }
-    } catch (error) {
-      console.error("Errors: ", error);
+      await logoutUser(userId);
+      await deleteToken('accessToken');
+      setUserToken(null);
+    } catch (err) {
+      console.error('Logout error:', err);
     }
   };
-  
-
-  if (!fullyLoaded) {
-    return (
-      <View
-        style={{
-          alignContent: "flex-start",
-          paddingTop: responsiveHeight(10),
-        }}
-      >
-        <ActivityIndicator size={"large"} color={"lightblue"} />
-      </View>
-    );
-  }
-  function handleImagePress(uri: string): void {
-    throw new Error("Function not implemented.");
-  }
-
-  const toggleCommentsModal = (post?: PostWithUsername) => {
-      setSelectedPost(post || null);
-      setCommentsModalVisible(!commentsModalVisible);
-    };
 
   return (
     <View style={styles.container}>
-      <Modal
-                visible={commentsModalVisible}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => toggleCommentsModal()}
-              >
-                <View style={styles.centeredView}>
-                  <View style={styles.modalView}>
-                    <TouchableOpacity
-                      style={styles.closeButton}
-                      onPress={() => toggleCommentsModal()}
-                    >
-                      <Text style={styles.closeButtonText}>X</Text>
-                    </TouchableOpacity>
-                    {selectedPost && (
-                      <Comments
-                        comments={commentsMap[selectedPost.post_id] || []}
-                        postUserId={selectedPost.user_id}
-                        postId={selectedPost.post_id}
-                        userId={userID}
-                        orgId={NaN}
-                        onAddComment={handleAddComment}
-                        onDeleteComment={handleDeleteComment}
-                        onLikeComment={handleLikeComment}
-                        onUnlikeComment={handleUnlikeComment}
-                      />
-                    )}
-                  </View>
-                </View>
-              </Modal>
-      <FlatList
-        style={[{ width: responsiveWidth(100) }]}
-        data={posts}
-        keyExtractor={(item) => "" + item.post_id}
-        // numColumns={3}
+    <TopNav title="Profile" showBack={!isOwnProfile} />
+  <FlatList
+        data={[]}
+        keyExtractor={() => 'empty'}
+        style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={!fullyLoaded} onRefresh={fetchProfile} />
-        }
-        ListHeaderComponent={
+        contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 0 }}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        ListHeaderComponent={() => (
           <>
-            <View style={styles.headerBar}>
-              <BackButton position={{ top: 1.5, left: 3 }} />
-            </View>
-            <View style={styles.profileUser}>
-              {/* Profile Picture */}
-              <Image
-                key ={userPfp || 'default'}
-                style={{
-                  height: responsiveHeight(9),
-                  width: responsiveHeight(9),
-                  borderRadius: 50,
-                }}
-                //Removed source={{ uri: userPfp }}
-                // Added conditional to check if userPfp is a valid URL
-                // If not, use default avatar
-                // Added defaultSource to show default avatar while loading
-                // Added require for default avatar at top of file
-              source={
-               // userPfp
-              // ? { uri: userPfp }
-              {uri: 'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png'}
-              }
-              onError={(e) => console.log('Profile image error:', e.nativeEvent.error)}
-              onLoad={() => console.log('Profile image loaded')}
-              resizeMode="cover"
-              />
-              
-
-              {/* Posts, Followers, Following */}
-              <View style={styles.attributes}>
-                <TouchableOpacity
-                  onPress={void 0}
-                  style={styles.textAttributes}
-                >
-                  <Text style={styles.textUserInfo}>Posts</Text>
-                  <Text style={styles.textUserInfo}>{posts.length}</Text>
-                </TouchableOpacity>
-                {/* <TouchableOpacity
-                  onPress={() =>
-                    navigation.navigate("ProfileFollowersScreen", {
-                      userID: userID,
-                    })
-                  }
-                  style={styles.textAttributes}
-                >
-                  <Text style={styles.textUserInfo}>{"Followers "}</Text>
-                  <Text style={styles.textUserInfo}>{followerCount}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() =>
-                    navigation.navigate("ProfileFollowingScreen", {
-                      userID: userID,
-                    })
-                  }
-                  style={styles.textAttributes}
-                >
-                  <Text style={styles.textUserInfo}>{"Following "}</Text>
-                  <Text style={styles.textUserInfo}>{followingCount}</Text>
-                </TouchableOpacity> */}
-              </View>
-            </View>
-            {/* Name */}
-            <Text
-              style={{
-                fontSize: responsiveFontSize(1.8),
-                fontWeight: "bold",
-                color: "black",
-                paddingStart: responsiveWidth(2),
-                paddingBottom: responsiveHeight(1),
-                backgroundColor: "transparent",
-              }}
-            >
-              {editFirstName + " " + editLastName}
-            </Text>
-            {profileOwner && (
-              <View
-                style={[
-                  styles.attributes,
-                  {
-                    paddingHorizontal: responsiveWidth(2),
-                    paddingBottom: responsiveHeight(1),
-                  },
-                ]}
-              >
-                <TouchableOpacity
-                  onPress={() => navigation.navigate("ProfileEditScreen")}
-                  style={styles.iconStyle}
-                >
-                  <Text
-                    style={{
-                      fontSize: responsiveFontSize(1.8),
-                      fontWeight: "bold",
-                      color: "black",
-                    }}
-                  >
-                    Edit Profile
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-            {!profileOwner && (
-              <View
-                style={[
-                  styles.attributes,
-                  {
-                    paddingHorizontal: responsiveWidth(2),
-                    paddingBottom: responsiveHeight(1),
-                  },
-                ]}
-              >
-                {/* {!following && (
-                  <TouchableOpacity
-                    onPress={() => handleFollowProfile()}
-                    style={styles.iconStyle}
-                  >
-                    <Text
+            <View style={{ height: responsiveHeight(2) }} />
+            <View style={[styles.profileCardWrapper, { marginTop: responsiveHeight(0) }]}>
+              <LinearGradient colors={['rgba(0,132,209,1)', 'rgba(0,146,184,1)']} style={styles.profileCard}>
+                <View style={styles.cardContent}>
+                  <View style={styles.avatarCircle}>
+                    <Image
+                      source={
+                        userPfp
+                          ? { uri: userPfp }
+                          : { uri: 'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png' }
+                      }
                       style={{
-                        fontSize: responsiveFontSize(1.8),
-                        fontWeight: "bold",
-                        color: "black",
+                        width: responsiveHeight(7.6),
+                        height: responsiveHeight(7.6),
+                        borderRadius: responsiveHeight(3.8),
                       }}
-                    >
-                      Follow Profile
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                {following && (
-                  <TouchableOpacity
-                    onPress={() => handleUnfollowProfile()}
-                    style={styles.iconStyle}
-                  >
-                    <Text
-                      style={{
-                        fontSize: responsiveFontSize(1.8),
-                        fontWeight: "bold",
-                        color: "black",
-                      }}
-                    >
-                      Following
-                    </Text>
-                  </TouchableOpacity>
-                )} */}
+                    />
+                  </View>
+                  <View style={styles.cardText}>
+                    <Text style={styles.name}>{firstName + ' ' + lastName}</Text>
+                    {email ? <Text style={styles.email}>{email}</Text> : null}
+                    {location ? <Text style={styles.location}>{location}</Text> : null}
+                  </View>
+                  {isOwnProfile && (
+                    <TouchableOpacity style={styles.settingsBtn} onPress={() => navigation.navigate('ProfileEditScreen')}>
+                      <MaterialIcons name="settings" size={18} color="#fff" />
+                    </TouchableOpacity>
+                  )}
+                </View>
 
-                {/* <TouchableOpacity onPress={void 0} style={styles.iconStyle}>
-                  <Text
-                    style={{
-                      fontSize: responsiveFontSize(1.8),
-                      fontWeight: "bold",
-                      color: "black",
-                    }}
+                <View style={styles.statsRow}>
+                  <TouchableOpacity
+                    style={styles.statBox}
+                    disabled={!userID || isNaN(userID)}
+                    onPress={() => navigation.navigate('ProfilePostsScreen', { userID })}
                   >
-                    Share Profile
-                  </Text>
-                </TouchableOpacity> */}
-              </View>
+                    <MaterialIcons name="article" size={18} color="#fff" style={{ marginBottom: 6 }} />
+                    <Text style={styles.statNum}>{postsCount}</Text>
+                    <Text style={styles.statLabel}>Posts</Text>
+                  </TouchableOpacity>
+                  <View style={styles.statBox}>
+                    <MaterialIcons name="event" size={18} color="#fff" style={{ marginBottom: 6 }} />
+                    <Text style={styles.statNum}>{0}</Text>
+                    <Text style={styles.statLabel}>Events</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.statBox}
+                    disabled={!isOwnProfile}
+                    onPress={() => navigation.navigate('ProfileFollowingScreen', { userID })}
+                  >
+                    <MaterialIcons name="groups" size={18} color="#fff" style={{ marginBottom: 6 }} />
+                    <Text style={styles.statNum}>{followingCount}</Text>
+                    <Text style={styles.statLabel}>Followed</Text>
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
+            </View>
+
+            {isOwnProfile && (
+              <>
+                <Text style={styles.sectionTitle}>Support</Text>
+                <TouchableOpacity style={styles.supportItem} onPress={() => navigation.navigate('ReportScreen')}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Icon name="help-outline" size={20} color="#111827" style={{ marginRight: 12 }} />
+                    <Text style={styles.supportText}>Help & Support</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.supportItem} onPress={() => navigation.navigate('ReportScreen')}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Icon name="description" size={20} color="#111827" style={{ marginRight: 12 }} />
+                    <Text style={styles.supportText}>Create a Report</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.supportItem} onPress={() => setConfirmVisible(true)}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name="logout" size={20} color="#e11d48" style={{ marginRight: 10 }} />
+                    <Text style={[styles.supportText, { color: '#e11d48', fontWeight: '600' }]}>Log Out</Text>
+                  </View>
+                </TouchableOpacity>
+              </>
             )}
           </>
-        }
-        ListEmptyComponent={() => (
-          <View style={{ padding: responsiveHeight(4), alignItems: 'center' }}>
-            <Text style={{ fontSize: responsiveFontSize(1.8), color: '#666' }}>No posts yet</Text>
-          </View>
-        )}
-        // renderItem={({ item, index }) => {
-        //   let marginLeft = 0;
-        //   let marginRight = 0;
-        //   let marginBottom = responsiveWidth(0.5);
-        //   if (index % 3 === 1) {
-        //     marginLeft = responsiveWidth(0.5);
-        //     marginRight = responsiveWidth(0.5);
-        //   }
-        //   return (
-        //     <View
-        //       style={[
-        //         styles.posts,
-        //         {
-        //           marginRight,
-        //           marginLeft,
-        //           marginBottom,
-        //           backgroundColor: "grey",
-        //         },
-        //       ]}
-        //     >
-        //       <Text
-        //         style={[
-        //           {
-        //             height: responsiveWidth(33),
-        //             width: responsiveWidth(33),
-        //             backgroundColor: "transparent",
-        //           },
-        //         ]}
-        //       >
-        //         {item.content}
-        //       </Text>
-        //     </View>
-        //   );
-        // }}
-        renderItem={({ item }) => (
-          <View style={styles.post}>
-            <View style={styles.headerRow}>
-
-              {/* old code */}{/* <Image
-                source={{ uri: `${process.env.EXPO_PUBLIC_API_URL}${item.image_url}` }}
-                style={styles.avatar}
-              />
-              */}
-              {/*eddited logic for default profile picture*/}
-              <Image
-                source={
-                    // item.image_url
-                    // ?{ uri: `${process.env.EXPO_PUBLIC_API_URL}${item.image_url}` }
-                    {uri: 'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png'}
-                }
-                style={styles.avatar}
-              />
-              {/*end of edits */}
-              
-              <View style={styles.headerTextContainer}>
-                <Text style={styles.userName}>
-                  {editFirstName + " " + editLastName}
-                </Text>
-                <Text style={styles.timestamp}>
-                  {new Date(item.created_at).toLocaleDateString()} at{" "}
-                  {new Date(item.created_at).toLocaleTimeString()}
-                </Text>
-              </View>
-            </View>
-            {item.content && (
-              <Text style={styles.postText}>{item.content}</Text>
-            )}
-            {item.image?.length > 0 && (
-              <FlatList
-                data={item.image}
-                keyExtractor={(item, index) => index.toString()}
-                renderItem={({ item: uri }) => (
-                  <TouchableOpacity onPress={() => handleImagePress(uri)}>
-                    <Image source={{ uri }} style={styles.fullWidthImage} />
-                  </TouchableOpacity>
-                )}
-                horizontal
-                pagingEnabled={true}
-                showsHorizontalScrollIndicator={false}
-                snapToAlignment="center"
-                snapToInterval={Dimensions.get("window").width}
-              />
-            )}
-            {/* {item.pdfs?.map((pdf: PdfFile, index: number) => (
-              <View key={pdf.uri} style={styles.pdfItem}>
-                {" "}
-                // Make sure pdf.uri is unique
-                <TouchableOpacity onPress={() => handleOpenPdf(pdf.uri)}>
-                  <MaterialIcons name="picture-as-pdf" size={24} color="red" />
-                  <Text style={styles.pdfName}>{pdf.name}</Text>
-                </TouchableOpacity>
-              </View>
-            ))} */}
-            <TouchableOpacity
-              onPress={() => toggleCommentsModal(item)}
-              style={styles.commentButton}
-            > 
-            <LikeButton
-                postId={item.post_id}
-                user_id={userID}
-                initialLikesCount={item.likes_count}
-                likedPost={item.user_liked}
-              />
-            <MaterialIcons name="comment" size={24} color="#007AFF" />
-            <Text style={{ color: "#007AFF", marginLeft: 4 }}>
-                {(commentsMap[item.post_id] || []).length}
-              </Text>
-            </TouchableOpacity>
-            {userID === currentUserID && (
-              <TouchableOpacity
-                onPress={() =>
-                  setVisibleDropdown(
-                    visibleDropdown === item.post_id ? null : item.post_id
-                  )
-                }
-                style={styles.dropdownIcon}
-              >
-                <Text>...</Text>
-              </TouchableOpacity>
-            )}
-            {visibleDropdown === item.post_id && (
-              <View style={styles.dropdownMenu}>
-                {/* {userID === currentUserID && (
-                  <TouchableOpacity
-                    onPress={() => startEditingPost(item.post_id)}
-                  >
-                    <Text style={styles.dropdownItem}>Edit</Text>
-                  </TouchableOpacity>
-                )} */}
-                {userID === currentUserID && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      handleDeletePost(item);
-                    }}
-                  >
-                    <Text style={styles.dropdownItem}>Delete</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-          </View>
-        )}
+  )}
+  renderItem={() => null}
+      />
+      <Popup
+        isVisible={confirmVisible}
+        message={"Are you sure you want to log out?"}
+        onClose={() => setConfirmVisible(false)}
+        buttons={[
+          { label: 'Cancel', onPress: () => setConfirmVisible(false), backgroundColor: '#777' },
+          { label: 'Yes', onPress: doLogout, backgroundColor: '#d9534f' },
+        ]}
       />
     </View>
   );
@@ -646,24 +252,27 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0.8)",
   },
   commentButton: {
-    marginTop: 10,
-    padding: 10,
+    marginTop: 2,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
     borderRadius: 5,
     alignItems: "center",
     flexDirection: "row",
-    justifyContent: "flex-start",
+    justifyContent: "flex-end",
+    width: '100%',
   },
   headerTextContainer: {
-    marginLeft: 10,
+    marginLeft: 6,
     justifyContent: "center",
   },
   userName: {
     fontSize: 16,
     marginBottom: 4,
+    fontWeight: '600',
   },
   timestamp: {
     fontSize: 12,
-    color: "#999",
+    color: "#9CA3AF",
   },
   dropdownIcon: {
     padding: 10,
@@ -702,29 +311,34 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginBottom: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginBottom: 0,
+    marginRight: 6,
   },
   post: {
-    borderWidth: 1,
-    borderColor: "#ccd0d5",
-    borderRadius: 10,
-    padding: 20,
     backgroundColor: "#fff",
-    marginBottom: 10,
-    alignItems: "flex-start",
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    alignSelf: "stretch",
     width: "100%",
+    marginBottom: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
   },
   postText: {
-    marginBottom: 10,
-    color: "#1c1e21",
+    marginBottom: 4,
+    color: "#1f2937",
+    fontSize: 16,
+    lineHeight: 24,
+    /* align post text with the username/timestamp (avatar width 44 + avatar marginRight 6 + headerTextContainer marginLeft 6 = 56) */
+    marginLeft: 56,
   },
   headerRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 10,
+    alignItems: "center",
+    marginBottom: 6,
   },
   fullWidthImage: {
     width: Dimensions.get("window").width,
@@ -771,7 +385,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "black",
     backgroundColor: "transparent",
-    paddingHorizontal: responsiveWidth(3),
+  paddingHorizontal: responsiveWidth(2.2),
   },
   textAttributes: {
     justifyContent: "center",
@@ -797,6 +411,141 @@ const styles = StyleSheet.create({
     width: responsiveWidth(90),
     backgroundColor: "black",
     marginBottom: responsiveHeight(1),
+  },
+  topHeader: {
+    height: responsiveHeight(12),
+    width: responsiveWidth(100),
+    justifyContent: 'center',
+    paddingHorizontal: responsiveWidth(4),
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    flex: 1,
+    color: '#fff',
+    fontSize: responsiveFontSize(2.4),
+    fontWeight: '700',
+  },
+  searchCircle: {
+    width: responsiveHeight(5),
+    height: responsiveHeight(5),
+    borderRadius: responsiveHeight(2.5),
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileCardWrapper: {
+  paddingHorizontal: responsiveWidth(4),
+  marginTop: responsiveHeight(1),
+  },
+  profileCard: {
+    backgroundColor: '#0ea5e9',
+    borderRadius: responsiveHeight(3),
+  paddingVertical: responsiveHeight(1.4),
+  paddingHorizontal: responsiveWidth(4),
+  width: responsiveWidth(92),
+  alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  paddingRight: responsiveWidth(1.2),
+  },
+  avatarCircle: {
+  width: responsiveHeight(9.2),
+  height: responsiveHeight(9.2),
+  borderRadius: responsiveHeight(4.6),
+  borderWidth: 2,
+  borderColor: 'rgba(255,255,255,0.38)',
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginRight: responsiveWidth(3),
+  backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  avatarInitials: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: responsiveFontSize(2.8),
+  },
+  cardText: {
+  marginTop: -responsiveHeight(0.8),
+    flex: 1,
+  },
+  name: {
+    color: '#fff',
+    fontSize: responsiveFontSize(2),
+    fontWeight: '700',
+  },
+  email: {
+    color: 'rgba(255,255,255,0.95)',
+    fontSize: responsiveFontSize(1.4),
+    marginTop: responsiveHeight(0.2),
+  },
+  location: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: responsiveFontSize(1.2),
+    marginTop: responsiveHeight(0.4),
+  },
+  settingsBtn: {
+  width: responsiveHeight(5),
+  height: responsiveHeight(5),
+  borderRadius: responsiveHeight(2.5),
+  backgroundColor: 'rgba(255,255,255,0.18)',
+  justifyContent: 'center',
+  alignItems: 'center',
+  position: 'absolute',
+  right: responsiveWidth(2.2),
+  top: responsiveHeight(1.4),
+  },
+  statsRow: {
+  flexDirection: 'row',
+  marginTop: responsiveHeight(1.6),
+  paddingHorizontal: responsiveWidth(0.4),
+  },
+  statBox: {
+  width: responsiveWidth(26),
+  backgroundColor: 'rgba(255,255,255,0.12)',
+  marginRight: responsiveWidth(2),
+  paddingVertical: responsiveHeight(1.6),
+  borderRadius: responsiveHeight(1.6),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  statNum: {
+    color: '#fff',
+    fontSize: responsiveFontSize(2),
+    fontWeight: '700',
+  },
+  statLabel: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: responsiveFontSize(1.2),
+  },
+  sectionTitle: {
+    marginTop: responsiveHeight(2),
+    marginLeft: responsiveWidth(4),
+    fontSize: responsiveFontSize(1.8),
+    fontWeight: '600',
+    color: '#111827',
+  },
+  supportItem: {
+    marginHorizontal: responsiveWidth(4),
+    marginTop: responsiveHeight(1.8),
+    paddingVertical: responsiveHeight(2.4),
+    paddingHorizontal: responsiveWidth(4),
+    borderRadius: responsiveHeight(1.2),
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  supportText: {
+    fontSize: responsiveFontSize(1.6),
+    color: '#111827',
   },
 });
 

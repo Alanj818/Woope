@@ -8,7 +8,7 @@ export interface AccessToken {
 	// is_Admin: boolean;
 	user_id: number;
 	phoneNumber: string;
-	permissions: string;
+	permissions: any;
 	org_name: string;
 	org_id: number;
 }
