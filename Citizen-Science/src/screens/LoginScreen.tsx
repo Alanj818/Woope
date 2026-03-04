@@ -12,7 +12,6 @@ import ScreenTitle from "../components/ScreenTitle";
 import { responsiveFontSize, responsiveHeight, responsiveWidth } from "react-native-responsive-dimensions";
 import Blobs from "../components/Blobs";
 import { loginUser } from "../api/auth";
-//import {storeToken} from "../util/token"
 import { AuthContext } from "../util/AuthContext";
 import { storeToken } from '../util/token';
 
@@ -34,7 +33,7 @@ const LoginScreen: React.FC = () => {
     const { setUserToken } = useContext(AuthContext);
     const handleLoginPress = async () => {
         try {
-            const response = await loginUser(email, password);
+            const response = await loginUser(String(email).toLowerCase(), password);
     
             await storeToken('accessToken', response.accessToken);
             await storeToken('refreshToken', response.refreshToken);
@@ -108,9 +107,9 @@ const LoginScreen: React.FC = () => {
                         borderColor="#5EA1E9"
                         borderRadius={10}
                         position={{ top: 8, left: 0 }}
-                        autoCapitalize="none"        // ✅ Prevents first letter auto-cap
-                        keyboardType="email-address" // ✅ Opens correct keyboard with @ symbol
-                        textContentType="emailAddress" // ✅ Proper autocomplete behavior
+                        autoCapitalize="none"        // Prevents first letter auto-cap
+                        keyboardType="email-address" // Opens correct keyboard with @ symbol
+                        textContentType="emailAddress" // Proper autocomplete behavior
                     />
 
 

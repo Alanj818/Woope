@@ -1,6 +1,6 @@
 import React, { useContext, useState } from 'react';
 const apiUrl = process.env.EXPO_PUBLIC_API_URL;
-import { ImageBackground, SafeAreaView, Platform, KeyboardAvoidingView, Text, View, TouchableOpacity, Alert } from "react-native";
+import { ImageBackground, SafeAreaView, Platform, KeyboardAvoidingView, View, TouchableOpacity, Alert } from "react-native";
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import CustomButton from '../components/CustomButton';
@@ -16,8 +16,6 @@ import { responsiveHeight, responsiveWidth } from "react-native-responsive-dimen
 import Blobs from "../components/Blobs";
 import { storeToken } from "../util/token";
 import { AuthContext } from "../util/AuthContext";
-import DateTimePicker from '@react-native-community/datetimepicker';
-import moment from 'moment';
 import { useRef } from 'react';
 
 type NavigationParam = {
@@ -91,17 +89,12 @@ const SignupScreen = () => {
 	};
 
 	const handleSignUpPress = async () => {
+		console.log("API URL:", apiUrl);
+		console.log("Senting otp to", `${apiUrl}/otp/send-otp`)
 		if (!otpSent) {
 			if (validate()) {
 				try {
-					// console.log(apiUrl);
-					// if (!apiUrl) {
-					// 	console.log('API URL not defined. Check your app config or environment.');
-					// 	return;
-					// }
-					console.log(apiUrl, "1");
-					console.log(userInfo);
-					await axios.post(`${apiUrl}/otp/send-otp`, { email: userInfo.email });
+					await axios.post(`${apiUrl}/otp/send-otp`, { email: String(userInfo.email).toLowerCase() });					
 					console.log(apiUrl);
 					setOtpSent(true);
 					Alert.alert('OTP Sent', 'Please check your email for the OTP.');
@@ -114,7 +107,7 @@ const SignupScreen = () => {
 			try {
 				console.log("in try");
 				const verifyRes = await axios.post(`${apiUrl}/otp/verify-otp`, {
-					email: userInfo.email,
+					email: String(userInfo.email).toLowerCase(),
 					otp,
 				});
 
@@ -124,7 +117,7 @@ const SignupScreen = () => {
 					console.log("OTP verified. Proceeding to register user.");
 					try {
 						const response = await registerUser(
-							userInfo.email,
+							String(userInfo.email).toLowerCase(),
 							userInfo.password,
 							userInfo.firstName,
 							userInfo.lastName,
@@ -180,12 +173,6 @@ const SignupScreen = () => {
 			isValid = false;
 			errorMessages.push('Last name is required');
 		}
-
-		// if (!userInfo.dateOfBirth) {
-		// 	newErrors.dateOfBirth = 'Birth date is required';
-		// 	isValid = false;
-		// 	errorMessages.push('Birth date is required');
-		// }
 
 
 		setErrors(newErrors);

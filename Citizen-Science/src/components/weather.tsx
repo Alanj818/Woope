@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ActivityIndicator, ScrollView, StyleSheet, Alert } from 'react-native';
 import axios from 'axios';
 import * as Location from 'expo-location';
+import { LinearGradient } from 'expo-linear-gradient';
 
 //what info we want from the weather api
 interface WeatherData {
@@ -15,11 +16,12 @@ interface WeatherData {
 const getWeatherIcon = (description: string, day: string) => {
     const d = description.toLowerCase();
     const isNight = day.toLowerCase().includes('night');
-
+    
     const isClear = d.includes('clear') || d.includes('sunny');
-
+    //console.log('Is Night:', isNight && isClear);
+    //console.log('Description:', description, 'Day:', day);
     switch (true) {
-        case isClear && isNight:
+        case isNight:
             return '🌙';
         case isClear:
             return '☀️';
@@ -84,8 +86,22 @@ const Weather: React.FC = () => {
                 //with the location with convert the lat & long to the city's name
                 const geo = await Location.reverseGeocodeAsync({ latitude, longitude });
                 if (geo.length > 0) {
-                    const city = geo[0].city || geo[0].region || 'Your Location';
-                    setLocationName(city);
+                    const g = geo[0];
+                    const city = g.city || g.region || '';
+                    // Prefer short region code (e.g., CA). If not available, try map from full name.
+                    const regionCode = (g as any).regionCode || '';
+
+                    const stateMap: Record<string, string> = {
+                        'Alabama': 'AL','Alaska': 'AK','Arizona': 'AZ','Arkansas': 'AR','California': 'CA','Colorado': 'CO','Connecticut': 'CT','Delaware': 'DE','Florida': 'FL','Georgia': 'GA','Hawaii': 'HI','Idaho': 'ID','Illinois': 'IL','Indiana': 'IN','Iowa': 'IA','Kansas': 'KS','Kentucky': 'KY','Louisiana': 'LA','Maine': 'ME','Maryland': 'MD','Massachusetts': 'MA','Michigan': 'MI','Minnesota': 'MN','Mississippi': 'MS','Missouri': 'MO','Montana': 'MT','Nebraska': 'NE','Nevada': 'NV','New Hampshire': 'NH','New Jersey': 'NJ','New Mexico': 'NM','New York': 'NY','North Carolina': 'NC','North Dakota': 'ND','Ohio': 'OH','Oklahoma': 'OK','Oregon': 'OR','Pennsylvania': 'PA','Rhode Island': 'RI','South Carolina': 'SC','South Dakota': 'SD','Tennessee': 'TN','Texas': 'TX','Utah': 'UT','Vermont': 'VT','Virginia': 'VA','Washington': 'WA','West Virginia': 'WV','Wisconsin': 'WI','Wyoming': 'WY'
+                    };
+
+                    let statePart = '';
+                    if (regionCode && regionCode.length <= 3) statePart = regionCode;
+                    else if (g.region && stateMap[g.region]) statePart = stateMap[g.region];
+                    else if (g.region) statePart = g.region; // fallback to whatever region string we have
+
+                    const label = city ? (statePart ? `${city}, ${statePart}` : city) : (statePart || 'Your Location');
+                    setLocationName(label);
                 }
 
             } catch (err) {
@@ -102,95 +118,115 @@ const Weather: React.FC = () => {
     if (loading) return <ActivityIndicator size="large" color="#ff8c00" />; //loading bar
     if (error) return <Text style={styles.errorText}>Error: {error}</Text>;
 
-    //UI
+    // UI: location row + two rounded cards (Weather + Air Quality)
+    const first = weatherData && weatherData.length > 0 ? weatherData[0] : null;
+    // air quality currently not fetched; display '00' and '--' when unknown
+    const aqValue: string | number | null = null; // set real value if you wire AQ API
+    const aqText: string = '';
+    const aqDisplay = aqValue != null ? String(aqValue) : '00';
+    const aqTextDisplay = aqText && aqText.length > 0 ? aqText : '--';
+    const weatherDescription = first ? (first.Description && first.Description.length > 0 ? first.Description : '--') : '--';
+
     return (
-        <View style={styles.container}>
-            <Text style={styles.cityText}>{locationName}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollView}>
-                {weatherData.map((data, index) => (
-                    <View key={index} style={styles.weatherItem}>
-                        <Text style={styles.weatherIcon}>{getWeatherIcon(data.Description, data.Day)}</Text>
-                        <View style={styles.weatherDetails}>
-                            <Text style={styles.day}>{getCorrectDay(index)}</Text>
-                            <Text style={styles.temperature}>{data.Temp}°{data.TempUnit}</Text>
-                            <Text style={styles.description}>{data.Description}</Text>
-                        </View>
-                    </View>
-                ))}
-            </ScrollView>
+        <View style={styles.outer}>
+            <Text style={styles.locationLabel}>{locationName}</Text>
+
+            <View style={styles.cardsRow}>
+                <LinearGradient
+                    colors={["rgba(0,166,244,1)", "rgba(0,184,219,1)"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.card, styles.weatherCard]}
+                >
+                    <Text style={styles.cardTitle}>Weather</Text>
+                    <Text style={styles.cardTemp}>{first ? `${first.Temp}°${first.TempUnit}` : '--'}</Text>
+                    <Text style={styles.cardSubtitle}>{weatherDescription}</Text>
+                </LinearGradient>
+
+                <LinearGradient
+                    colors={["rgba(0,201,80,1)", "rgba(0,188,125,1)"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.card, styles.aqCard]}
+                >
+                    <Text style={styles.cardTitle}>Air Quality</Text>
+                    <Text style={styles.cardTemp}>{aqDisplay}</Text>
+                    <Text style={styles.cardSubtitle}>{aqTextDisplay}</Text>
+                </LinearGradient>
+            </View>
         </View>
     );
 };
 
 
 const styles = StyleSheet.create({
-    container: {
-        backgroundColor: '#B4D7EE',
-        borderRadius: 30,
-        paddingVertical: 20,
-        paddingHorizontal: 15,
-        alignItems: 'center',
+    outer: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        marginBottom: 16,
+        alignItems: 'flex-start',
+    },
+    locationText: {
+        fontSize: 12,
+        color: '#ffffff',
+        marginBottom: 8,
+        paddingLeft: 6,
+        opacity: 0.9,
+    },
+    locationLabel: {
+        color: '#495565',
+        fontSize: 14,
+        fontWeight: '400',
+        letterSpacing: -0.15,
+        lineHeight: 20,
+        alignSelf: 'flex-start',
+        marginBottom: 8,
+    },
+    cardsRow: {
+        flexDirection: 'row',
+        alignItems: 'stretch',
+        justifyContent: 'space-between',
+    },
+    card: {
+        flex: 1,
+        borderRadius: 14,
+        padding: 14,
+        minHeight: 90,
         justifyContent: 'center',
-        alignSelf: 'stretch',
-        marginHorizontal: 10,
-        marginBottom: 20,
-        borderWidth: 1,
-        borderColor: '#E7F3FD',
+        marginRight: 10,
         shadowColor: '#000',
+        shadowOpacity: 0.08,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
         shadowRadius: 6,
-        elevation: 5,
+        elevation: 3,
     },
-    scrollView: {
-        flexDirection: 'row',
+    weatherCard: {
+        backgroundColor: '#00A6F4', // approximate gradient start
     },
-    weatherItem: {
-        backgroundColor: '#FFF',
-        borderRadius: 5,
-        padding: 10,
-        marginRight: 20,
-        alignItems: 'center',
-        flexDirection: 'row',
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
+    aqCard: {
+        backgroundColor: '#00C950', // approximate gradient start
+        marginRight: 0,
     },
-    weatherDetails: {
-        marginLeft: 10,
+    cardTitle: {
+        color: '#ffffff',
+        fontSize: 12,
+        marginBottom: 4,
     },
-    weatherIcon: {
-        fontSize: 30,
+    cardTemp: {
+        color: '#ffffff',
+        fontSize: 24,
+        fontWeight: '400',
+        lineHeight: 32,
     },
-    day: {
-        fontWeight: 'bold',
-        color: '#ff8c00',
-        fontSize: 16,
-    },
-    temperature: {
-        fontSize: 16,
-        color: '#555',
-        fontWeight: 'bold',
-    },
-    description: {
-        fontSize: 15,
-        color: '#555',
+    cardSubtitle: {
+        color: '#ffffff',
+        fontSize: 12,
+        opacity: 0.75,
+        marginTop: 6,
     },
     errorText: {
         color: '#D8000C',
         textAlign: 'center',
     },
-    cityText: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginBottom: 10,
-        color: '#333',
-        textAlign: 'center',
-    },    
 });
 export default Weather;

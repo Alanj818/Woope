@@ -51,7 +51,7 @@ export async function fetchAPIWithFiles(
     console.warn("Token expired during file upload. Attempting refresh...");
     const newToken = await refreshAccessToken(setUserToken);
     if (newToken) {
-      config.headers['Authorization'] = `Bearer ${newToken}`;
+      (config as any).headers = { ...(config as any).headers, Authorization: `Bearer ${newToken}` };
       response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}${endpoint}`, config);
     } else {
       throw new Error("Session expired. Please log in again.");

@@ -6,6 +6,7 @@ import React, {useState,useEffect, useContext} from 'react';
 import { View, Text, SafeAreaView, FlatList, TouchableOpacity, StyleSheet, StatusBar, ScrollView } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import OrganizationCard from '../../components/OrganizationCard';
+import TopNav from '../../components/TopNav';
 import EventCard from '../../components/EventCard';
 import CreateResource from '../../components/CreateResource';
 import { Resource } from '../../api/types';
@@ -16,7 +17,7 @@ import { jwtDecode } from 'jwt-decode';
 import {AccessToken} from "../../util/token";
 
 
-export const OrganizationProfile = ({route}) => {
+export const OrganizationProfile = ({ route }: { route: any }) => {
     const { userToken } = useContext(AuthContext);
     const decodedToken = userToken ? jwtDecode<AccessToken>(userToken) : null;
     const userId = decodedToken ? decodedToken.user_id : NaN;
@@ -41,7 +42,9 @@ export const OrganizationProfile = ({route}) => {
             }
         }
     return(
-        <SafeAreaView style = {styles.container}>
+        <>
+        <TopNav title="Organization" showBack onBack={() => navigation.goBack()} />
+        <SafeAreaView style={[styles.container, { backgroundColor: 'transparent', marginTop: 0, paddingTop: 0 }]}>
             <ScrollView>
                 {/* Container for organization card */}
                 <View>
@@ -69,7 +72,7 @@ export const OrganizationProfile = ({route}) => {
                 <FlatList
                 data={resourceData}
                 scrollEnabled={false}
-                keyExtractor={(item) => item.resource_id} 
+                keyExtractor={(item) => String(item.resource_id)} 
                 renderItem={({item}) => (
                     <TouchableOpacity style={styles.postBox} onPress={() => navigation.navigate("ResourceProfile",{
                         resource_id: item.resource_id,
@@ -88,6 +91,7 @@ export const OrganizationProfile = ({route}) => {
                 }/>
             </ScrollView>
         </SafeAreaView>
+        </>
     );
 };
 const styles = StyleSheet.create({

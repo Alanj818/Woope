@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import mime from "mime";
 import { getToken } from "../util/token";
+import { refreshAccessToken } from "../util/fetchWithToken";
 
 /**
 	Updates the name of a user
@@ -13,22 +14,43 @@ export const updateName = async (
 	user_id: number,
 	firstName: string,
 	lastName: string,
-	accessToken: any
+	accessToken: string | null,
+	setUserToken?: (val: string | null) => void
 ) => {
-	const response = await fetch(
-		`${process.env.EXPO_PUBLIC_API_URL}/community/update-name`,
-		{
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify({ user_id, firstName, lastName, accessToken }),
+	let token = accessToken || (await getToken("accessToken"));
+	const url = `${process.env.EXPO_PUBLIC_API_URL}/community/update-name`;
+
+	let response = await fetch(url, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({ user_id, firstName, lastName, accessToken: token }),
+	});
+
+	if ((response.status === 401 || response.status === 403) && setUserToken) {
+		const refreshed = await refreshAccessToken(setUserToken);
+		if (refreshed) {
+			token = refreshed;
+			response = await fetch(url, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ user_id, firstName, lastName, accessToken: token }),
+			});
 		}
-	);
+	}
 
 	if (!response.ok) {
-		const errorResponse = await response.json();
-		const error = new Error(errorResponse.error || response.statusText);
+		let errorMessage = response.statusText;
+		try {
+			const errorResponse = await response.json();
+			errorMessage = errorResponse.error || errorMessage;
+		} catch {
+			// ignore json parse failures
+		}
+		const error = new Error(errorMessage);
 		error.name = `HTTP Error ${response.status}`;
 		throw error;
 	}
