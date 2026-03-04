@@ -1,3 +1,5 @@
+import { startTtnMqtt } from "./services/ttnMqtt";
+import ttnRoutes from "./routes/ttn";
 import { Request, Response } from 'express'
 import { createPinNew } from './models/pins';
 require('dotenv').config();
@@ -6,6 +8,8 @@ const express = require('express')
 const cors = require('cors');
 const app = express()
 app.use(cors()); // Moved here
+
+startTtnMqtt(); // starts the MQTT client to listen for TTN messages
 
 const port = process.env.PORT || '3000'
 const multer = require('multer')
@@ -55,6 +59,7 @@ import otpRoutes from './routes/otp';
 app.use('/', pinRoutes);
 app.use('/auth', authRoutes);
 app.use('/otp', otpRoutes);
+app.use('/ttn', ttnRoutes);
 
 require('./startup/routes')(app);
 app.listen(port, () => console.log(`Server running on port ${port}`))
