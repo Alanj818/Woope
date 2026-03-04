@@ -1,15 +1,15 @@
 import { useEffect } from 'react';
 
-const API_KEY = "CEFE17E9-BE6A-11F0-BDE5-4201AC1DC121";
+const API_KEY = "FF12D6BC-0D42-11F1-B596-4201AC1DC123";
 //const SENSOR_ID = ["228143","128333","294503"];
-const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL;
+const BACKEND_URL =  process.env.EXPO_PUBLIC_API_URL + "/purpleair/pins";
 
 export const fetchPurpleAirData = async () => {
   try { 
       //get pins from backend
       const pinsResponce = await fetch(BACKEND_URL);
       if(!pinsResponce.ok){
-        throw new Error("Yeah the pins are not being found");
+        throw new Error("Error finding purple air pin");
       }
 
       const pins = await pinsResponce.json();
