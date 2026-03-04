@@ -144,25 +144,26 @@ export const MapScreen = () => {
 			}));
 
 			let finalPins = [];
-			const purpleAirPins = (data || []).map((sensorData, index) => {
-            console.log('Sensor data:', sensorData);
-            
-            // PurpleAir API structure: { sensor: { ... } }
-            const sensor = sensorData.sensor;
-            
-            return {
-                pin_id: -(index + 1), // Negative IDs to distinguish from database pins
-                name: sensor?.name || `PurpleAir Sensor ${index + 1}`,
-                date: new Date().toISOString().split('T')[0],
-                description: `Air quality sensor, Air Temp: ${sensor.temperature}°F, PM2.5: ${sensor['pm2.5_atm']} µg/m³`,
-                tag: "Weather",
-                image: null,
-                location: {
-                    latitude: sensor?.latitude,
-                    longitude: sensor?.longitude,
-                },
-            };
-        });
+			
+			const purpleAirPins = (data || []).map((sensorData:any, index: number): Pin | null => {
+				const sensor = sensorData?.sensor;
+
+				if(!sensor) return null;
+
+				return {
+					pin_id: -(index + 1),
+    				name: sensor.name || `PurpleAir Sensor ${index + 1}`,
+    				date: new Date().toISOString().split('T')[0],
+    				description: `Air quality sensor, Air Temp: ${sensor.temperature ?? 'N/A'}°F, PM2.5: ${sensor['pm2.5'] ?? 'N/A'} µg/m³`,
+    				tag: "Weather",
+    				image: null,
+   					location: {
+      					latitude: sensor.latitude,
+      					longitude: sensor.longitude,
+    				},
+				};
+
+			}).filter((pin): pin is Pin => pin !== null);
 			
 		
 			finalPins = [...transformedPins, ...purpleAirPins];
@@ -174,10 +175,7 @@ export const MapScreen = () => {
 			setPins([...finalPins]); // Spread operator ensures a new array
 			setFilteredPins([...finalPins]);
 
-			//console.log('\nPins (from setPins) : ', pins)
-			//console.log("\nFiltered Pins (from setFilteredPins):", filteredPins)
-
-			//return finalPins;
+		
 
 		} catch (error) {
 			console.error('Error fetching all pins:', error);

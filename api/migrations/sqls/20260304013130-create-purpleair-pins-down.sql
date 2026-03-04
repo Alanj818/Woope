@@ -1,0 +1,1 @@
+DROP TABLE purpleair_pins;
