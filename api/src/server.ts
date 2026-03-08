@@ -1,4 +1,6 @@
-import { startTtnMqtt } from "./services/ttnMqtt";
+import { startTtnMqtt } from "./services/ttnMqttService";
+import { startPurpleAirJob } from "./services/purpleAirService";
+import purpleAirRouter from "./routes/purpleAirRouter";
 import ttnRoutes from "./routes/ttn";
 import { Request, Response } from 'express'
 import { createPinNew } from './models/pins';
@@ -9,7 +11,9 @@ const cors = require('cors');
 const app = express()
 app.use(cors()); // Moved here
 
+
 startTtnMqtt(); // starts the MQTT client to listen for TTN messages
+startPurpleAirJob(); // starts the scheduled job to fetch PurpleAir data
 
 const port = process.env.PORT || '3000'
 const multer = require('multer')
@@ -49,6 +53,7 @@ app.post('/upload', upload.single('file'), async (req: Request, res: Response) =
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
+
 app.use('/uploads', express.static('uploads'));
 
 // ✅ Import and Use Routes
@@ -60,6 +65,7 @@ app.use('/', pinRoutes);
 app.use('/auth', authRoutes);
 app.use('/otp', otpRoutes);
 app.use('/ttn', ttnRoutes);
+app.use('/purpleair',purpleAirRouter);
 
 require('./startup/routes')(app);
 app.listen(port, () => console.log(`Server running on port ${port}`))

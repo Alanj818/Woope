@@ -1,34 +1,34 @@
 import { fetchAPI } from "./fetch";
 
-// Fetch all PurpleAir pins
+// Fetch all PurpleAir sensors
 export const getPurpleAirPins = async () => {
-  return fetchAPI("/purpleair/pins");
+  return fetchAPI("/purpleair/sensors");
 };
 
-// Create a new PurpleAir pin
+// Create a new PurpleAir sensor
 export const createPurpleAirPin = async (
   name: string,
   purple_air_sensor_id: string
 ) => {
-  return fetchAPI("/purpleair/pins", "POST", {
+  return fetchAPI("/purpleair/sensors", "POST", {
     name,
     purpleAirSensorId: purple_air_sensor_id,
   });
 };
 
-// Update an existing PurpleAir pin
+// Update an existing PurpleAir sensor
 export const updatePurpleAirPin = async (
   id: number,
   name: string,
   purple_air_sensor_id: string
 ) => {
-  return fetchAPI(`/purpleair/pins/${id}`, "PUT", {
+  return fetchAPI(`/purpleair/sensors/${id}`, "PUT", {
     name,
     purpleAirSensorId: purple_air_sensor_id,
   });
 };
 
-// Delete a PurpleAir pin
+// Delete a PurpleAir sensor
 export const deletePurpleAirPin = async (id: number) => {
-  return fetchAPI(`/purpleair/pins/${id}`, "DELETE");
+  return fetchAPI(`/purpleair/sensors/${id}`, "DELETE");
 };

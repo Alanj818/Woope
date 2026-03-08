@@ -1,7 +1,9 @@
 import { fetchAPI } from "./fetch";
 
 export type TtnDevice = {
-  device_id: string;
+  sensor_id: number;
+  source_id: string;
+  device_name: string;
   last_received_at: string;
   latitude: number;
   longitude: number;

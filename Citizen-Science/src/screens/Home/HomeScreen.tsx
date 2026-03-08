@@ -32,7 +32,7 @@ import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
 } from "react-native-responsive-screen";
-import Weather from "../../components/Weather";
+import Weather from "../../components/weather";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopNav from '../../components/TopNav';

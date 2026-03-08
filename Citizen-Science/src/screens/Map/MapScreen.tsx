@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import { createPinNew, getAllPinsNew, deletePinNew, updatePinNew } from '../../api/pins';
-import { fetchPurpleAirData } from '../../api/purpleair';
-import { getAllTtnDevices } from "../../api/ttn"; // ✅ NEW: Pull TTN device markers from your backend (/ttn/devices)
+import { getAllPurpleAirDevices } from '../../api/purpleair';
+import { getAllTtnDevices } from "../../api/ttn";
 
 import {
   View,
@@ -20,17 +20,13 @@ import MapView, { Marker } from 'react-native-maps';
 import { KeyboardAvoidingView, TouchableWithoutFeedback, Keyboard, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
-//import * as Camera from 'expo-camera';
 import DropDownPicker from 'react-native-dropdown-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as MediaLibrary from 'expo-media-library';
-import test from 'node:test';
 import { AuthContext } from '../../util/AuthContext';
 import { logActivity } from '../../api/activity';
 import { jwtDecode } from 'jwt-decode';
 import { AccessToken } from '../../util/token';
-
-
 
 const windowWidth = Dimensions.get('window').width;
 
@@ -47,7 +43,7 @@ interface Region {
 }
 
 interface Pin {
-  pin_id: number; // Added pin_id for delete and update
+  pin_id: number;
   name: string;
   date: string;
   description: string;
@@ -64,8 +60,8 @@ export const MapScreen = () => {
   const decodedToken = userToken ? jwtDecode<AccessToken>(userToken) : null;
   const userId = decodedToken ? decodedToken.user_id : NaN;
 
-  const [loading, setLoading] = useState(true);     // Entire screen loading
-  const [pinLoading, setPinLoading] = useState(false); // Refreshing pins only
+  const [loading, setLoading] = useState(true);
+  const [pinLoading, setPinLoading] = useState(false);
 
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
   const [initialRegion, setInitialRegion] = useState<Region | null>(null);
@@ -75,15 +71,15 @@ export const MapScreen = () => {
 
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [detailsVisible, setDetailsVisible] = useState(false); // For the sliding info modal
+  const [detailsVisible, setDetailsVisible] = useState(false);
 
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedPin, setSelectedPin] = useState<Pin | null>(null); // Pin selected for details
+  const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
   const [formLocation, setFormLocation] = useState<Location | null>(null);
 
   const [isMarkerPressed, setIsMarkerPressed] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [filterTag, setFilterTag] = useState('All'); // For filtering pins
+  const [filterTag, setFilterTag] = useState('All');
 
   const isMarkerPressedRef = useRef(false);
 
@@ -104,13 +100,9 @@ export const MapScreen = () => {
     { label: 'Hazard', value: 'Hazard' },
     { label: 'Mutual Aid', value: 'Mutual Aid' },
     { label: 'Nasa', value: 'Nasa' },
-
-    // ✅ NEW: Optional tag so you can filter TTN pins separately
-    // Why: TTN pins are "external telemetry pins" (like PurpleAir) not user-created pins.
     { label: 'TTN', value: 'TTN' },
   ]);
 
-  // Fetching Pins
   const fetchPins = async () => {
     try {
       let allPins: any[] = [];
@@ -118,30 +110,23 @@ export const MapScreen = () => {
         allPins = await getAllPinsNew(setUserToken);
       } catch (err: any) {
         console.warn('Failed to fetch pins from backend:', err);
-        // If backend returns 402 (Payment Required) or other error,
-        // fall back to empty list so the map can still render PurpleAir pins.
         allPins = [];
       }
 
+      // ✅ Updated: fetch PurpleAir data from our backend instead of PurpleAir directly
       let data: any[] = [];
       try {
-        data = await fetchPurpleAirData();
+        data = await getAllPurpleAirDevices(setUserToken);
       } catch (err: any) {
         console.warn('Failed to fetch PurpleAir data:', err);
-        // If PurpleAir responds with 402 (Payment Required) or any other error,
-        // fall back to an empty array rather than aborting the whole fetch.
         data = [];
       }
 
-      // ✅ NEW: Fetch TTN device-state markers from your backend
-      // Why: TTN devices are already in your DB; your backend endpoint /ttn/devices returns
-      // one "latest state" row per device for fast map rendering.
       let ttnDevices: any[] = [];
       try {
         ttnDevices = await getAllTtnDevices(setUserToken);
       } catch (err: any) {
         console.warn('Failed to fetch TTN devices:', err);
-        // Keep the map working even if TTN is down
         ttnDevices = [];
       }
 
@@ -160,58 +145,49 @@ export const MapScreen = () => {
         },
       }));
 
-      let finalPins = [];
+      // ✅ Updated: data is now flat from our backend, no nested sensor object
+      const purpleAirPins = (data || []).map((sensor: any, index: number) => ({
+        pin_id: -(index + 1),
+        name: sensor?.name || `PurpleAir Sensor ${index + 1}`,
+        date: sensor?.received_at
+          ? new Date(sensor.received_at).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0],
+        description: `Air quality sensor, Temp: ${sensor?.temperature_c ?? '—'}°C, PM2.5: ${sensor?.pm2_5_atm ?? '—'} µg/m³`,
+        tag: "Weather",
+        image: null,
+        location: {
+          latitude: sensor?.latitude_deg,
+          longitude: sensor?.longitude_deg,
+        },
+      }));
 
-      const purpleAirPins = (data || []).map((sensorData, index) => {
-        console.log('Sensor data:', sensorData);
-
-        // PurpleAir API structure: { sensor: { ... } }
-        const sensor = sensorData.sensor;
-
-        return {
-          pin_id: -(index + 1), // Negative IDs to distinguish from database pins
-          name: sensor?.name || `PurpleAir Sensor ${index + 1}`,
-          date: new Date().toISOString().split('T')[0],
-          description: `Air quality sensor, Air Temp: ${sensor.temperature}°F, PM2.5: ${sensor['pm2.5_atm']} µg/m³`,
-          tag: "Weather",
-          image: null,
-          location: {
-            latitude: sensor?.latitude,
-            longitude: sensor?.longitude,
-          },
-        };
-      });
-
-      // ✅ NEW: Convert TTN devices into your existing Pin shape so the map can render them
-      // Why: Your map renders one unified "Pin[]" list, so we just transform TTN device rows into Pins.
+      // ✅ Updated: use source_id instead of device_id
       const ttnPins = (ttnDevices || [])
-        // extra safety: filter out missing coordinates (should already be filtered on the backend)
         .filter((d: any) => typeof d?.latitude === "number" && typeof d?.longitude === "number")
         .map((d: any, index: number) => ({
-          pin_id: -(10000 + index + 1), // Negative IDs far from PurpleAir negatives (-1,-2,...)
-          name: d.device_id,
+          pin_id: -(10000 + index + 1),
+          name: d.source_id, // ✅ updated from d.device_id
           date: d.last_received_at
             ? new Date(d.last_received_at).toISOString().split('T')[0]
             : new Date().toISOString().split('T')[0],
           description:
             `LoRaWAN device ${d.is_online ? "✅ Online" : "⚪ Offline"}\n` +
             `Temp: ${d.temperature_c ?? "—"}°C, Hum: ${d.humidity_pct ?? "—"}%, Gas: ${d.gas_ohms ?? "—"} Ω`,
-          tag: "TTN",      // ✅ NEW: lets you filter TTN pins via your UI
-          image: null,     // TTN pins have no image (you can add custom marker icons later)
+          tag: "TTN",
+          image: null,
           location: {
             latitude: d.latitude,
             longitude: d.longitude,
           },
         }));
 
-      // ✅ UPDATED: include TTN pins in the same list
-      finalPins = [...transformedPins, ...purpleAirPins, ...ttnPins];
+      const finalPins = [...transformedPins, ...purpleAirPins, ...ttnPins];
 
       if ((transformedPins.length === 0) && (purpleAirPins.length === 0) && (ttnPins.length === 0)) {
         console.warn('No pins returned from backend, PurpleAir, or TTN (all empty).');
       }
 
-      setPins([...finalPins]); // Spread operator ensures a new array
+      setPins([...finalPins]);
       setFilteredPins([...finalPins]);
     } catch (error) {
       console.error('Error fetching all pins:', error);
@@ -220,11 +196,9 @@ export const MapScreen = () => {
     }
   };
 
-  //Intitial Load (location + Pins)
   useEffect(() => {
     const loadEverything = async () => {
       try {
-        // 1. Location permission
         let { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== "granted") {
           console.log("Location permission denied");
@@ -232,7 +206,6 @@ export const MapScreen = () => {
           return;
         }
 
-        // 2. Get current location
         const loc = await Location.getCurrentPositionAsync({});
         setCurrentLocation(loc.coords);
 
@@ -243,7 +216,6 @@ export const MapScreen = () => {
           longitudeDelta: 0.005,
         });
 
-        // 3. Load pins
         await fetchPins();
       } catch (err) {
         console.error(err);
@@ -255,9 +227,7 @@ export const MapScreen = () => {
     loadEverything();
   }, []);
 
-  //filtering
   useEffect(() => {
-    // Filter pins based on the selected tag
     if (filterTag === 'All') {
       setFilteredPins(pins);
     } else {
@@ -265,7 +235,6 @@ export const MapScreen = () => {
     }
   }, [pins, filterTag]);
 
-  //Loading
   if (loading) {
     return (
       <View style={{
@@ -283,35 +252,35 @@ export const MapScreen = () => {
   const handleMarkerPress = (pin: Pin) => {
     console.log('Marker pressed:', pin);
     logActivity(userId, `Marker pressed: ${pin}`)
-    isMarkerPressedRef.current = true; // Update ref value immediately
-    setIsMarkerPressed(true); // Update state for UI
-    setSelectedPin(pin); // Set the selected pin for details
+    isMarkerPressedRef.current = true;
+    setIsMarkerPressed(true);
+    setSelectedPin(pin);
     setDetailsVisible(true);
   };
 
   const handleMapPress = (event: { nativeEvent: { coordinate: Location } }) => {
     if (isMarkerPressedRef.current || detailsVisible) {
       console.log('Ignoring map press due to marker press');
-      isMarkerPressedRef.current = false; // Reset the flag
+      isMarkerPressedRef.current = false;
       return;
     }
 
     const { coordinate } = event.nativeEvent;
-    setFormLocation(coordinate); // Save the location of the tap
+    setFormLocation(coordinate);
     setIsEditMode(false);
-    setModalVisible(true); // Show the form modal
+    setModalVisible(true);
   };
 
   const closeDetailsModal = () => {
-    setSelectedPin(null); // Clear the selected pin
-    setDetailsVisible(false); // Close the details modal
-    isMarkerPressedRef.current = false; // Reset the flag
-    setIsMarkerPressed(false); // Reset marker pressed state
+    setSelectedPin(null);
+    setDetailsVisible(false);
+    isMarkerPressedRef.current = false;
+    setIsMarkerPressed(false);
   };
 
   const handleDeletePin = async (pinId: number): Promise<boolean> => {
     try {
-      await deletePinNew(pinId, setUserToken); // The API call
+      await deletePinNew(pinId, setUserToken);
       console.log('Pin deleted successfully!');
       return true;
     } catch (error) {
@@ -334,17 +303,6 @@ export const MapScreen = () => {
       return;
     }
 
-    console.log("📤 Sending Pin Data to Backend...");
-    console.log("📝 Form Data:", {
-      name: formData.name,
-      description: formData.description,
-      datebegin: formData.date, // ✅ Ensure this exists
-      tag: formData.tag,
-      longitude: pinLocation?.longitude, // ✅ Check these are defined
-      latitude: pinLocation?.latitude,
-      image: formData.image || null
-    });
-
     if (!pinLocation.longitude || !pinLocation.latitude) {
       console.error("❌ Error: Longitude or Latitude is undefined!");
       alert("Error: Missing location data.");
@@ -365,7 +323,7 @@ export const MapScreen = () => {
 
       console.log("✅ Pin Created Successfully:", newPin);
       logActivity(userId, `Created pin: ${newPin}`)
-      await fetchPins(); // Refresh from backend to ensure image URLs are included
+      await fetchPins();
 
       setFormData({
         name: "",
@@ -390,54 +348,39 @@ export const MapScreen = () => {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 1,
-      exif: true, // Ensure EXIF data is included
+      exif: true,
     });
 
     if (!result.canceled) {
       const imageUri = result.assets[0].uri;
       console.log('Image URI:', imageUri);
 
-      // Check for EXIF data
       const exifData = result.assets[0].exif;
       if (exifData && exifData.GPSLatitude && exifData.GPSLongitude) {
         let latitude = exifData.GPSLatitude;
         let longitude = exifData.GPSLongitude;
 
-        // Adjust based on hemisphere reference
-        if (exifData.GPSLatitudeRef === 'S') {
-          latitude = -latitude; // Southern hemisphere
-        }
-        if (exifData.GPSLongitudeRef === 'W') {
-          longitude = -longitude; // Western hemisphere
-        }
+        if (exifData.GPSLatitudeRef === 'S') latitude = -latitude;
+        if (exifData.GPSLongitudeRef === 'W') longitude = -longitude;
 
-        console.log(`Geolocation found: Latitude: ${latitude}, Longitude: ${longitude}`);
-
-        // Save location and image in state
         setFormData((prev) => ({
           ...prev,
           image: imageUri,
-          location: { latitude, longitude }, // Save location to form data
+          location: { latitude, longitude },
         }));
       } else {
-        // Handle the case where no geolocation is found
         Alert.alert(
           'No Geolocation Found',
           'This image does not contain geolocation data. Would you still like to use it?',
           [
-            {
-              text: 'Cancel',
-              onPress: () => console.log('User canceled'),
-              style: 'cancel',
-            },
+            { text: 'Cancel', onPress: () => console.log('User canceled'), style: 'cancel' },
             {
               text: 'Yes',
               onPress: () => {
-                // Save only the image without geolocation
                 setFormData((prev) => ({
                   ...prev,
                   image: imageUri,
-                  location: null, // No location data available
+                  location: null,
                 }));
               },
             },
@@ -454,42 +397,32 @@ export const MapScreen = () => {
     setFormLocation(null);
   };
 
-  //handle camera button's action
   const handleOpenCamera = async () => {
-    // Request camera permission
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       alert('Camera permission is required to take a picture.');
       return;
     }
 
-    // Request location permission
     const locationPermission = await Location.requestForegroundPermissionsAsync();
     if (locationPermission.status !== 'granted') {
       alert('Location permission is required to capture geolocation.');
       return;
     }
 
-    // Launch the camera
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 1,
-      exif: true, // EXIF data might not include geolocation
+      exif: true,
     });
 
     if (!result.canceled) {
       const imageUri = result.assets[0].uri;
-      console.log('Captured Image URI:', imageUri);
-
-      // Fetch current location
       const location = await Location.getCurrentPositionAsync({});
       const latitude = location.coords.latitude;
       const longitude = location.coords.longitude;
 
-      console.log(`Manual Geolocation: Latitude: ${latitude}, Longitude: ${longitude}`);
-
-      // Prompt user to use the captured location
       Alert.alert(
         'Use Current Location',
         'The camera does not include geolocation in the image. Would you like to use your current location instead?',
@@ -497,25 +430,13 @@ export const MapScreen = () => {
           {
             text: 'No',
             onPress: () => {
-              // Save the image without geolocation
-              setFormData((prev) => ({
-                ...prev,
-                image: imageUri,
-                location: null, // No location
-              }));
-              console.log('User chose not to use current location');
+              setFormData((prev) => ({ ...prev, image: imageUri, location: null }));
             },
           },
           {
             text: 'Yes',
             onPress: () => {
-              // Save image with the current location
-              setFormData((prev) => ({
-                ...prev,
-                image: imageUri,
-                location: { latitude, longitude }, // Use current location
-              }));
-              console.log('User chose to use current location');
+              setFormData((prev) => ({ ...prev, image: imageUri, location: { latitude, longitude } }));
             },
           },
         ]
@@ -524,16 +445,14 @@ export const MapScreen = () => {
   };
 
   const handleEditPin = () => {
-    // ✅ NEW: Prevent editing external pins (PurpleAir / TTN)
-    // Why: external pins do not exist in your DB, so updatePinNew would fail / be confusing.
-    if(!selectedPin) return;
-	if (selectedPin?.pin_id < 0) {
+    if (!selectedPin) return;
+    if (selectedPin?.pin_id < 0) {
       alert("This is an external sensor pin and can't be edited.");
       return;
     }
 
     if (selectedPin) {
-      setSelectedPin(selectedPin); // keep pin
+      setSelectedPin(selectedPin);
       setDetailsVisible(false);
       setFormData({
         name: selectedPin.name,
@@ -543,13 +462,12 @@ export const MapScreen = () => {
         image: selectedPin.image,
         location: selectedPin.location,
       });
-      setIsEditMode(true); // Switch to update mode
-      setModalVisible(true); // Open the modal with pre-filled data
+      setIsEditMode(true);
+      setModalVisible(true);
     }
   };
 
   const handlePinUpdateFormSubmit = async () => {
-    // Validate form before submission
     if (!formData.name || !formData.date || !formData.description || !formData.tag) {
       alert('Please fill out all fields before submitting.');
       return;
@@ -563,37 +481,31 @@ export const MapScreen = () => {
     }
 
     try {
-      // Call the API to update the pin in the database (assume updatePinNew exists)
       if (!selectedPin) {
         alert('No pin selected for update.');
         return;
       }
 
-      // ✅ NEW: Prevent updating external pins (PurpleAir / TTN)
       if (selectedPin.pin_id < 0) {
         alert("This is an external sensor pin and can't be updated.");
         return;
       }
 
       const updatedPin = await updatePinNew(
-        selectedPin.pin_id, // Use the pin ID of the selected pin
+        selectedPin.pin_id,
         formData.name,
         formData.description,
         new Date(formData.date),
         formData.tag,
-        pinLocation.longitude, // changed to match backend
-        pinLocation.latitude,  // changed to match backend
+        pinLocation.longitude,
+        pinLocation.latitude,
         setUserToken
       );
 
-      // Ensure date parsing is valid
       if (updatedPin.datebegin) {
-        updatedPin.date = new Date(updatedPin.datebegin).toISOString().split('T')[0]; // Format date correctly
+        updatedPin.date = new Date(updatedPin.datebegin).toISOString().split('T')[0];
       }
 
-      console.log('Response from updatePinNew:', updatedPin);
-
-      // Update the pin in the frontend state
       setPins((prev) =>
         prev.map((pin: Pin) =>
           pin.pin_id === updatedPin.pin_id
@@ -612,7 +524,6 @@ export const MapScreen = () => {
         )
       );
 
-      // Reset the form and hide the modal
       setFormData({ name: '', date: '', description: '', tag: 'General', image: null, location: null });
       setFormLocation(null);
       setModalVisible(false);
@@ -627,7 +538,6 @@ export const MapScreen = () => {
     }
   };
 
-  // HTML
   return (
     <View style={styles.container}>
       <TouchableOpacity
@@ -651,7 +561,6 @@ export const MapScreen = () => {
         <Text style={{ color: 'white', fontWeight: 'bold' }}>Filter</Text>
       </TouchableOpacity>
 
-      {/* Loading Screen */}
       {pinLoading && (
         <View style={{
           position: "absolute",
@@ -666,7 +575,6 @@ export const MapScreen = () => {
         </View>
       )}
 
-      {/* Map */}
       {initialRegion && (
         <MapView
           key={filteredPins.map((pin: Pin) => pin.name).join('-')}
@@ -694,7 +602,6 @@ export const MapScreen = () => {
             );
           })}
 
-          {/* Render a pin for the photo's geolocation if available */}
           {formData.location && (
             <Marker
               coordinate={{
@@ -713,7 +620,6 @@ export const MapScreen = () => {
         </MapView>
       )}
 
-      {/* Modal for Viewing Pin Details */}
       <Modal visible={detailsVisible} animationType="slide" transparent={true}>
         <View style={styles.detailsContainer}>
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' }}>
@@ -726,22 +632,16 @@ export const MapScreen = () => {
                   return;
                 }
 
-                // ✅ NEW: Prevent deleting external pins (PurpleAir / TTN)
-                // Why: they aren't stored in your DB, so deletePinNew doesn't apply.
                 if (selectedPin.pin_id < 0) {
                   alert("This is an external sensor pin and can't be deleted.");
                   return;
                 }
 
-                console.log('Selected Pin for deletion:', selectedPin.pin_id);
-
                 const success = await handleDeletePin(selectedPin.pin_id);
 
                 if (success) {
                   closeDetailsModal();
-                  setTimeout(() => {
-                    fetchPins();
-                  }, 200);
+                  setTimeout(() => { fetchPins(); }, 200);
                   alert('Pin deleted successfully!');
                 }
               }}
@@ -753,18 +653,13 @@ export const MapScreen = () => {
               style={[styles.closeButton, { marginRight: 20 }]}
               onPress={() => {
                 closeDetailsModal();
-                setTimeout(() => {
-                  handleEditPin();
-                }, 200);
+                setTimeout(() => { handleEditPin(); }, 200);
               }}
             >
               <Text style={styles.closeButtonText}>Edit</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={closeDetailsModal}
-            >
+            <TouchableOpacity style={styles.closeButton} onPress={closeDetailsModal}>
               <Text style={styles.closeButtonText}>Close</Text>
             </TouchableOpacity>
           </View>
@@ -776,21 +671,16 @@ export const MapScreen = () => {
               <Text style={styles.detailsDescription}>{selectedPin.description}</Text>
               <Text style={styles.detailsTag}>Tag: {selectedPin.tag}</Text>
               {selectedPin.image && (
-                <Image
-                  source={{ uri: selectedPin.image }}
-                  style={styles.detailsImage}
-                />
+                <Image source={{ uri: selectedPin.image }} style={styles.detailsImage} />
               )}
             </>
           )}
         </View>
       </Modal>
-
     </View>
   );
 };
 
-// CSS (unchanged)
 const styles = StyleSheet.create({
   cameraButton: {
     backgroundColor: '#007AFF',
