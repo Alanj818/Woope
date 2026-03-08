@@ -30,6 +30,8 @@ import { logActivity } from '../../api/activity';
 import { jwtDecode } from 'jwt-decode';
 import { AccessToken } from '../../util/token';
 
+
+
 const windowWidth = Dimensions.get('window').width;
 
 interface Location {

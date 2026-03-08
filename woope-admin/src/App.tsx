@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import { useContext, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Login from "./screens/Login";
 import Home from "./screens/Home";
@@ -12,6 +12,7 @@ import { AuthContext } from "./context/AuthContext";
 import OrgProfile from "./screens/OrgProfile";
 import PinManager from "./screens/PinManager";
 import PermissionManager from "./screens/PermissionManager";
+import PurpleAirPinsManager from "./screens/PurpleAirPinsManager"
 
 function App() {
   const { userToken, userRole } = useContext(AuthContext);
@@ -111,6 +112,16 @@ function App() {
             </ProtectedRoute>
           }
         />
+      <Route
+        path="/purpleair-pins"
+        element={
+          <ProtectedRoute isAuthenticated={!!userToken} userRole={userRole}>
+            <Layout>
+              <PurpleAirPinsManager />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
       </Routes>
     </Router>
   );

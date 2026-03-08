@@ -1,29 +1,51 @@
-  import { useEffect } from 'react';
-  const API_KEY = "2ABD2673-15B8-11F1-B596-4201AC1DC123";
-  const SENSOR_ID = ["228143","128333","294503"];
+import { useEffect } from 'react';
 
-  export const fetchPurpleAirData = async () => {
-    try { 
-        const allSensorData = [];
-        for(let i =0;i < SENSOR_ID.length;i++) {
-        const url = `https://api.purpleair.com/v1/sensors/${SENSOR_ID[i]}?fields=latitude,longitude,pm2.5,temperature`;
-        
-        const response = await fetch(url, {
-          headers: {
-            "X-API-Key": API_KEY
-          }
-        })
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const jsonData = await response.json();
-        allSensorData.push(jsonData);
+const API_KEY = "FF12D6BC-0D42-11F1-B596-4201AC1DC123";
+//const SENSOR_ID = ["228143","128333","294503"];
+const BACKEND_URL =  process.env.EXPO_PUBLIC_API_URL + "/purpleair/pins";
+
+export const fetchPurpleAirData = async () => {
+  try { 
+      //get pins from backend
+      const pinsResponce = await fetch(BACKEND_URL);
+      if(!pinsResponce.ok){
+        throw new Error("Error finding purple air pin");
       }
 
-      console.log('PurpleAir Data:', allSensorData);
+      const pins = await pinsResponce.json();
+      const allSensorData = [];
+
+      //loop through pins in db
+      for(const pin of pins){
+        const sensorID = pin.purple_air_sensor_id;
+        const url = `https://api.purpleair.com/v1/sensors/${sensorID}?fields=latitude,longitude,pm2.5_atm,temperature`;
+
+        const responce = await fetch (url , {
+          headers: {
+            "X-API-Key" : API_KEY,
+          },
+        });
+
+        const jsonData = await responce.json();
+
+        allSensorData.push({
+          ...jsonData,
+          name: pin.name,
+          pinId: pin.id
+
+        });
+
+      }
+      
       return allSensorData;
-    } catch (error) {
-      console.error('Error fetching PurpleAir data:', error);
-      throw error;
-    }
-  };
+     
+      
+    
+
+  
+  } catch (error) {
+    console.error("Error fetching PurpleAir data:", error);
+    throw error;
+
+  }
+};
