@@ -9,12 +9,9 @@ import { useNavigation } from '@react-navigation/native';
 import { AuthContext } from '../../util/AuthContext';
 import { jwtDecode } from 'jwt-decode';
 import { AccessToken } from '../../util/token';
-import CreateUserEvent from './CreateUserEvent'
-import { useSafeAreaInsets } from 'react-native-safe-area-context';;
+import CreateUserEvent from './CreateUserEvent';
 
 import ScreenHeader from '../../components/ScreenHeader';
-import TopNav from '../../components/TopNav';
-
 
 interface Arguments {
   marked: boolean;
@@ -40,11 +37,10 @@ const CalendarScreen = () => {
   let [userMarks, setUserMarks] = useState<Marks[]>([]);
   let [followedItems, setFollowedItems] = useState<string[]>([]);
   let [marks, setMarks] = useState<any>({});
-  const generalColor = {color:'blue'};  
+  const generalColor = {color:'blue'};
   const followedColor = {color: 'red'};
   const userColor = {color: 'lightgreen'};
   const [modalVisible, setModalVisible] = useState(false);
-  const insets = useSafeAreaInsets();
    
   // gets all dates with marks/types of marks and once all promises are successful
   // creates the marks and applies them to the calendar
@@ -142,15 +138,19 @@ const CalendarScreen = () => {
   }
 
   return (
-    <View>
-      <TopNav title="Calendar" />
-      <TouchableOpacity style={styles.createEventButton}>
-         <Image style={[styles.addButton, {top: insets.top + 8}]} source={require("../../../assets/addButton.png")}/>
-      </TouchableOpacity>
+    <SafeAreaView>
+      <ScreenHeader navigation={null} />
 
-      
-     
-     
+      {/* Header */}
+      <View style={styles.headerContainer}>
+        <Text style={styles.headerTitle}> Calendar </Text>
+
+        <TouchableOpacity style={styles.headerButton} onPress={() => navigation.navigate('CreateUserEvent')}>
+          <Image style={styles.addButton} source={require("../../../assets/addButton.png")}/>
+        </TouchableOpacity>
+
+
+      </View>
 
       {/* calendar */}
       <View style={styles.container}> 
@@ -182,7 +182,7 @@ const CalendarScreen = () => {
       
       </View>
       <CreateUserEvent user_id={userId} isVisible={modalVisible} onClose={() => setModalVisible(false)} />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -334,14 +334,10 @@ postBoxText: {
     marginLeft: -210, 
     marginTop: 10, 
   },
+
   addButton:{
     width: 70,
     height: 70,
-  },
-   createEventButton: {
-    position: 'absolute',
-    right: 16,
-    zIndex: 40,
-  },
+  }
 
 });
