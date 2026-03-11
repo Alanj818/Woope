@@ -21,8 +21,8 @@ import {
 import { AuthContext } from "../../util/AuthContext";
 import { jwtDecode } from "jwt-decode";
 import "core-js/stable/atob";
-import { AccessToken, deleteToken } from "../util/token";
-import { logoutUser } from "../api/auth";
+import { AccessToken, deleteToken } from "../../util/token";
+import { logoutUser } from "../../api/auth";
 import { KeyboardAwareFlatList } from "react-native-keyboard-aware-scroll-view";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as Sharing from "expo-sharing";
@@ -32,7 +32,7 @@ import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
 } from "react-native-responsive-screen";
-import Weather from "../../components/Weather";
+import Weather from "./weather";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopNav from '../../components/TopNav';
