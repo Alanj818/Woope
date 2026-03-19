@@ -9,6 +9,10 @@ import {
   updatePurpleAirPin,
   deletePurpleAirPin
 } from "../api/purpleAirPins";
+import {
+  getPollInterval,
+  updatePollInterval
+} from "../api/settings";
 
 const PurpleAirPinsManager = () => {
   const [pins, setPins] = useState<any[]>([]);
@@ -16,11 +20,16 @@ const PurpleAirPinsManager = () => {
 
   const [name, setName] = useState("");
   const [sensorId, setSensorId] = useState("");
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
 
-  const tableHeaders = ["ID", "Name", "Sensor ID", "Actions"];
+  const [pollIntervalMinutes, setPollIntervalMinutes] = useState("5");
+
+  const tableHeaders = ["ID", "Name", "Sensor ID", "Latitude", "Longitude", "Actions"];
 
   useEffect(() => {
     fetchPins();
+    fetchGlobalPollInterval();
   }, []);
 
   const fetchPins = async () => {
@@ -33,10 +42,21 @@ const PurpleAirPinsManager = () => {
     }
   };
 
+  const fetchGlobalPollInterval = async () => {
+    try {
+      const res = await getPollInterval();
+      setPollIntervalMinutes(String(res.pollIntervalMinutes));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const rows = pins.map((pin) => [
     pin.id.toString(),
     pin.name,
-    pin.source_id, // ✅ updated from purple_air_sensor_id
+    pin.source_id,
+    pin.latitude ?? "",
+    pin.longitude ?? "",
     <>
       <button
         className="me-2 btn btn-primary"
@@ -57,10 +77,17 @@ const PurpleAirPinsManager = () => {
     </>,
   ]);
 
+  const resetForm = () => {
+    setName("");
+    setSensorId("");
+  };
+
   const openEditModal = (pin: any) => {
     setSelectedPin(pin);
-    setName(pin.name);
-    setSensorId(pin.source_id); // ✅ updated from purple_air_sensor_id
+    setName(pin.name ?? "");
+    setSensorId(pin.source_id ?? "");
+    setLatitude(pin.latitude?.toString() ?? "");
+    setLongitude(pin.longitude?.toString() ?? "");
   };
 
   const openDeleteModal = (pin: any) => {
@@ -69,12 +96,8 @@ const PurpleAirPinsManager = () => {
 
   const confirmEdit = async () => {
     try {
-      await updatePurpleAirPin(
-        selectedPin.id,
-        name,
-        sensorId
-      );
-      fetchPins();
+      await updatePurpleAirPin(selectedPin.id, name, sensorId);
+      await fetchPins();
       alert("Pin updated successfully.");
     } catch (e) {
       console.error(e);
@@ -85,7 +108,7 @@ const PurpleAirPinsManager = () => {
   const confirmDelete = async () => {
     try {
       await deletePurpleAirPin(selectedPin.id);
-      fetchPins();
+      await fetchPins();
       alert("Pin deleted successfully.");
     } catch (e) {
       console.error(e);
@@ -96,9 +119,8 @@ const PurpleAirPinsManager = () => {
   const confirmCreate = async () => {
     try {
       await createPurpleAirPin(name, sensorId);
-      setName("");
-      setSensorId("");
-      fetchPins();
+      resetForm();
+      await fetchPins();
       alert("Pin created successfully.");
     } catch (e) {
       console.error(e);
@@ -106,10 +128,41 @@ const PurpleAirPinsManager = () => {
     }
   };
 
+  const savePollInterval = async () => {
+    try {
+      await updatePollInterval(Number(pollIntervalMinutes));
+      await fetchGlobalPollInterval();
+      alert("Poll interval updated successfully.");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to update poll interval.");
+    }
+  };
+
   return (
     <div className="container-lg">
+      <div className="card mb-4">
+        <div className="card-body">
+          <h5 className="card-title">Global Sensor Polling</h5>
+          <p className="text-muted mb-2">
+            This poll interval applies to all PurpleAir sensors.
+          </p>
+          <div className="d-flex gap-2">
+            <input
+              type="number"
+              min="1"
+              className="form-control"
+              placeholder="Poll interval in minutes"
+              value={pollIntervalMinutes}
+              onChange={(e) => setPollIntervalMinutes(e.target.value)}
+            />
+            <button className="btn btn-primary" onClick={savePollInterval}>
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
 
-      {/* Create Pin Modal */}
       <Modal
         id="createPinModal"
         title="Add PurpleAir Pin"
@@ -140,14 +193,35 @@ const PurpleAirPinsManager = () => {
         }
       />
 
-      {/* Edit Pin Modal */}
       <Modal
         id="editPinModal"
         title="Edit PurpleAir Pin"
         body={
           <>
-            <input className="form-control mb-2" value={name} onChange={(e) => setName(e.target.value)}/>
-            <input className="form-control" value={sensorId} onChange={(e) => setSensorId(e.target.value)}/>
+            <input
+              className="form-control mb-2"
+              placeholder="Pin name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <input
+              className="form-control mb-2"
+              placeholder="PurpleAir Sensor ID"
+              value={sensorId}
+              onChange={(e) => setSensorId(e.target.value)}
+            />
+            <input
+              className="form-control mb-2"
+              placeholder="Latitude"
+              value={latitude}
+              disabled
+            />
+            <input
+              className="form-control"
+              placeholder="Longitude"
+              value={longitude}
+              disabled
+            />
           </>
         }
         footer={
@@ -161,7 +235,6 @@ const PurpleAirPinsManager = () => {
         }
       />
 
-      {/* Delete Pin Modal */}
       <Modal
         id="deletePinModal"
         title="Confirm Delete"
