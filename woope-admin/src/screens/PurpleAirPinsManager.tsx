@@ -25,7 +25,9 @@ const PurpleAirPinsManager = () => {
 
   const [pollIntervalMinutes, setPollIntervalMinutes] = useState("5");
 
-  const tableHeaders = ["ID", "Name", "Sensor ID", "Latitude", "Longitude", "Actions"];
+
+  //need to add type,status of sensor,remove edit for sensor id
+const tableHeaders = ["Source", "Name", "Sensor ID", "Latitude", "Longitude", "Status", "Actions"];
 
   useEffect(() => {
     fetchPins();
@@ -51,12 +53,23 @@ const PurpleAirPinsManager = () => {
     }
   };
 
-  const rows = pins.map((pin) => [
-    pin.id.toString(),
-    pin.name,
-    pin.source_id,
-    pin.latitude ?? "",
-    pin.longitude ?? "",
+const rows = pins.map((pin) => {
+  const isOnline = pin.last_seen &&
+  (Date.now() - new Date(pin.last_seen).getTime()) < Number(pollIntervalMinutes) * 2 * 60 * 1000;
+
+const status = !pin.last_seen ? 'pending' : isOnline ? 'online' : 'offline';
+const badgeClass = status === 'online' ? 'bg-success' : status === 'offline' ? 'bg-danger' : 'bg-secondary';
+const badgeLabel = status === 'online' ? 'Online' : status === 'offline' ? 'Offline' : 'Pending';
+
+return [
+  pin.source,
+  pin.name,
+  pin.source_id,
+  pin.latitude ?? "",
+  pin.longitude ?? "",
+  <span className={`badge ${badgeClass}`}>
+    {badgeLabel}
+  </span>,
     <>
       <button
         className="me-2 btn btn-primary"
@@ -75,7 +88,8 @@ const PurpleAirPinsManager = () => {
         Delete
       </button>
     </>,
-  ]);
+  ];
+});
 
   const resetForm = () => {
     setName("");
@@ -208,7 +222,7 @@ const PurpleAirPinsManager = () => {
               className="form-control mb-2"
               placeholder="PurpleAir Sensor ID"
               value={sensorId}
-              onChange={(e) => setSensorId(e.target.value)}
+              disabled
             />
             <input
               className="form-control mb-2"
@@ -250,7 +264,7 @@ const PurpleAirPinsManager = () => {
         }
       />
 
-      <PageHeader>PurpleAir Pin Manager</PageHeader>
+      <PageHeader>Sensor Manager</PageHeader>
       <hr />
 
       <Button className="mb-3" data-bs-toggle="modal" data-bs-target="#createPinModal">

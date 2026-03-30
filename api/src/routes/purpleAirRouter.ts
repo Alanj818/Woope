@@ -11,11 +11,17 @@ const router = express.Router();
 router.get('/sensors', async (req: Request, res: Response) => {
   try {
     const result = await pool.query(
-      `SELECT id, source_id, name, latitude, longitude, inserted_at
-       FROM sensors
-       WHERE source = 'purpleair' AND deleted_at IS NULL
-       ORDER BY inserted_at DESC`
-    );
+  `SELECT s.id, s.source, s.source_id, s.name, 
+  COALESCE(s.latitude, MAX(sl.latitude_deg)) AS latitude,
+  COALESCE(s.longitude, MAX(sl.longitude_deg)) AS longitude,
+  s.inserted_at,
+  MAX(sl.received_at) AS last_seen
+  FROM sensors s
+  LEFT JOIN sensor_logs sl ON sl.sensor_id = s.id
+  WHERE s.deleted_at IS NULL
+  GROUP BY s.id
+  ORDER BY s.inserted_at DESC`
+);
     res.status(200).json(result.rows);
   } catch (err) {
     console.error(err);
