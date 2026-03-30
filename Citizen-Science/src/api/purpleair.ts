@@ -1,51 +1,31 @@
-import { useEffect } from 'react';
+import { fetchAPI } from "./fetch";
 
-const API_KEY = "FF12D6BC-0D42-11F1-B596-4201AC1DC123";
-//const SENSOR_ID = ["228143","128333","294503"];
-const BACKEND_URL =  process.env.EXPO_PUBLIC_API_URL + "/purpleair/pins";
+export type PurpleAirSensor = {
+  sensor_id: number;
+  source_id: string;
+  name: string;
+  received_at: string;
+  latitude_deg: number | null;
+  longitude_deg: number | null;
+  temperature_c: number | null;
+  humidity_pct: number | null;
+  pressure_mb: number | null;
+  pm1_0: number | null;
+  pm2_5_atm: number | null;
+  pm2_5_cf1: number | null;
+  pm10_0: number | null;
+  voc: number | null;
+};
 
-export const fetchPurpleAirData = async () => {
-  try { 
-      //get pins from backend
-      const pinsResponce = await fetch(BACKEND_URL);
-      if(!pinsResponce.ok){
-        throw new Error("Error finding purple air pin");
-      }
+export const getAllPurpleAirDevices = async (
+  setUserToken?: (token: string | null) => void
+) => {
+  return fetchAPI("/purpleair/devices", "GET", null, setUserToken);
+};
 
-      const pins = await pinsResponce.json();
-      const allSensorData = [];
-
-      //loop through pins in db
-      for(const pin of pins){
-        const sensorID = pin.purple_air_sensor_id;
-        const url = `https://api.purpleair.com/v1/sensors/${sensorID}?fields=latitude,longitude,pm2.5_atm,temperature`;
-
-        const responce = await fetch (url , {
-          headers: {
-            "X-API-Key" : API_KEY,
-          },
-        });
-
-        const jsonData = await responce.json();
-
-        allSensorData.push({
-          ...jsonData,
-          name: pin.name,
-          pinId: pin.id
-
-        });
-
-      }
-      
-      return allSensorData;
-     
-      
-    
-
-  
-  } catch (error) {
-    console.error("Error fetching PurpleAir data:", error);
-    throw error;
-
-  }
+export const getPurpleAirDevice = async (
+  sensorId: number,
+  setUserToken?: (token: string | null) => void
+) => {
+  return fetchAPI(`/purpleair/devices/${sensorId}`, "GET", null, setUserToken);
 };

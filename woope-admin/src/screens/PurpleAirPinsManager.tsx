@@ -36,7 +36,7 @@ const PurpleAirPinsManager = () => {
   const rows = pins.map((pin) => [
     pin.id.toString(),
     pin.name,
-    pin.purple_air_sensor_id,
+    pin.source_id, // ✅ updated from purple_air_sensor_id
     <>
       <button
         className="me-2 btn btn-primary"
@@ -60,7 +60,7 @@ const PurpleAirPinsManager = () => {
   const openEditModal = (pin: any) => {
     setSelectedPin(pin);
     setName(pin.name);
-    setSensorId(pin.purple_air_sensor_id);
+    setSensorId(pin.source_id); // ✅ updated from purple_air_sensor_id
   };
 
   const openDeleteModal = (pin: any) => {

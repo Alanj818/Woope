@@ -1,5 +1,4 @@
 import express from 'express';
-import { getPurpleAirPins } from '../models/purpleairPins';
 let healthRouter = require('../routes/health');
 let authRouter = require('../routes/authentication');
 let postRouter = require('../routes/forum-posts')

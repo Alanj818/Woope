@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS sensor_logs;
+DROP TABLE IF EXISTS sensors;
