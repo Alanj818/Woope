@@ -40,12 +40,14 @@ app.post('/upload', upload.single('file'), async (req: Request, res: Response) =
             message: "File uploaded successfully",
             filePath: `/uploads/${req.file.filename}`
         });
+        
     } catch (error) {
         console.error("❌ Error uploading file:", error);
         res.status(500).json({ error: "Internal Server Error" });
     }
 });
-app.use('/uploads', express.static('uploads'));
+console.log('Working directory:', process.cwd());
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // ✅ Import and Use Routes
 const pinRoutes = require('./routes/pin');

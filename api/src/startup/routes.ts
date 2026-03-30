@@ -13,7 +13,8 @@ let eventRouter = require('../routes/event')
 let rolesRouter = require('../routes/roles')
 let reportRouter = require('../routes/report'); 
 let activityRouter = require('../routes/activity').default
-let purpleAirPinsRouter = require('../routes/purpleairPins').default; 
+let purpleAirPinsRouter = require('../routes/purpleairPins').default;
+let userActionsRoutes = require("../routes/userActionsRoutes"); 
 // add more routers here
 
 module.exports = function (app: express.Application) {
@@ -31,5 +32,7 @@ module.exports = function (app: express.Application) {
     app.use('/roles', rolesRouter);
     app.use('/report', reportRouter); 
     app.use('/activity', activityRouter);
-    app.use('/purpleair', purpleAirPinsRouter)
+    app.use('/purpleair', purpleAirPinsRouter);
+    app.use('/logs', userActionsRoutes);
+
 };

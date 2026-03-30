@@ -21,8 +21,8 @@ import {
 import { AuthContext } from "../../util/AuthContext";
 import { jwtDecode } from "jwt-decode";
 import "core-js/stable/atob";
-import { AccessToken, deleteToken } from "../util/token";
-import { logoutUser } from "../api/auth";
+import { AccessToken, deleteToken } from "../../util/token";
+import { logoutUser } from "../../api/auth";
 import { KeyboardAwareFlatList } from "react-native-keyboard-aware-scroll-view";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as Sharing from "expo-sharing";
@@ -32,7 +32,7 @@ import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
 } from "react-native-responsive-screen";
-import Weather from "../../components/Weather";
+import Weather from "./weather";
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopNav from '../../components/TopNav';
@@ -44,6 +44,7 @@ import {
   unlikePost,
   getPostLikes,
   getUserLikedPosts,
+  getAllPostsWithMedia,
 } from "../../api/posts";
 import {
   createComment,
@@ -185,11 +186,15 @@ const HomeScreen = () => {
 
   const fetchPosts = async () => {
     try {
-      let postsList = await getAllPosts(userId, setUserToken);
+      let postsList = await getAllPostsWithMedia(userId, setUserToken);
       postsList = postsList.filter((post: PostWithUsername) => {
         return post.is_active;
       });
       setPosts(postsList);
+      console.log('Posts with media:', JSON.stringify(postsList.map((p: any) => ({
+        post_id: p.post_id,
+        media: p.media
+      })), null, 2));
       const commentsMap: CommentsMap = {};
       for (const post of postsList) {
         const postComments = await getComments(post.post_id);
@@ -417,7 +422,7 @@ const HomeScreen = () => {
           renderItem={({ item }) => {
             const isDropdownOpen = visibleDropdown === item.post_id.toString();
             return (
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => isDropdownOpen ? null : handlePostPress(item)}
                 activeOpacity={isDropdownOpen ? 1 : 0.7}
               >
@@ -461,6 +466,40 @@ const HomeScreen = () => {
                   )}
 
                   {item.content && <Text style={styles.postText}>{item.content}</Text>}
+
+                  {item.media && item.media.length > 0 && (
+                    <View style={{ marginLeft: 56, marginTop: 8, gap: 8 }}>
+                      {item.media
+                        .filter((m: any) => m.media_type === 'Image')
+                        .map((m: any) => {
+                          const url = `${process.env.EXPO_PUBLIC_API_URL}${m.media_url}`;
+                          return (
+                            <TouchableOpacity key={m.media_id} onPress={() => handleImagePress(url)}>
+                              <Image
+                                source={{ uri: url }}
+                                style={{ width: '100%', height: 200, borderRadius: 12, backgroundColor: '#e5e7eb' }}
+                                resizeMode="cover"
+                              />
+                            </TouchableOpacity>
+                          );
+                        })
+                      }
+
+                      {item.media
+                        .filter((m: any) => m.media_type === 'PDF')
+                        .map((m: any) => (
+                          <TouchableOpacity
+                            key={m.media_id}
+                            onPress={() => handleOpenPdf(`${process.env.EXPO_PUBLIC_API_URL}${m.media_url}`)}
+                            style={{ flexDirection: 'row', alignItems: 'center', padding: 10, backgroundColor: '#f9fafb', borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb' }}
+                          >
+                            <MaterialIcons name="description" size={20} color="#0088ca" />
+                            <Text style={{ marginLeft: 8, color: '#111827', fontSize: 14 }}>{m.media_url.split('/').pop()}</Text>
+                          </TouchableOpacity>
+                        ))
+                      }
+                    </View>
+                  )}
 
                   {isDropdownOpen && (
                     <TouchableOpacity
@@ -640,11 +679,11 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   flexContainer: {
     flex: 1,
-   paddingHorizontal: 22,
-   paddingTop: 0,
-   paddingBottom: 22,
-   backgroundColor: 'transparent',
-   },
+    paddingHorizontal: 22,
+    paddingTop: 0,
+    paddingBottom: 22,
+    backgroundColor: 'transparent',
+  },
   postBox: {
     backgroundColor: "#B4D7EE",
     borderRadius: 30,
@@ -682,11 +721,11 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   inputContainer: {
-  width: "90%",
-  alignSelf: "center",
-  paddingHorizontal: 12,
-  paddingVertical: 16,
-  borderRadius: 8,
+    width: "90%",
+    alignSelf: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+    borderRadius: 8,
     backgroundColor: "#FFFFFF",
     shadowColor: "#000",
     shadowOffset: {
@@ -700,15 +739,15 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   input: {
-  borderWidth: 0,
-  borderColor: "transparent",
-  borderRadius: 10,
-  padding: 12,
-  width: "100%",
-  marginBottom: 10,
-  fontSize: 18,
-  color: '#0D2538',
-  backgroundColor: '#FFFFFF',
+    borderWidth: 0,
+    borderColor: "transparent",
+    borderRadius: 10,
+    padding: 12,
+    width: "100%",
+    marginBottom: 10,
+    fontSize: 18,
+    color: '#0D2538',
+    backgroundColor: '#FFFFFF',
   },
   editInput: {
     borderWidth: 0,
@@ -728,38 +767,38 @@ const styles = StyleSheet.create({
     width: "100%",
     height: undefined,
     aspectRatio: 4 / 3,
-  borderRadius: 8,
+    borderRadius: 8,
     marginBottom: 10,
   },
   postButton: {
-  backgroundColor: "#007AFF",
-  borderRadius: 16,
-  marginTop: 8,
-  width: wp("26%"),
-  alignSelf: "flex-end",
-  paddingVertical: hp("1.2%"),
-  paddingHorizontal: wp("6%"),
+    backgroundColor: "#007AFF",
+    borderRadius: 16,
+    marginTop: 8,
+    width: wp("26%"),
+    alignSelf: "flex-end",
+    paddingVertical: hp("1.2%"),
+    paddingHorizontal: wp("6%"),
   },
   postButtonText: {
-  color: "#FFFFFF",
-  textAlign: "center",
-  fontSize: 15,
+    color: "#FFFFFF",
+    textAlign: "center",
+    fontSize: 15,
   },
   postButtonSmall: {
     backgroundColor: "#007AFF",
-  borderRadius: 14,
-  marginTop: 4,
-  minWidth: wp("24%"),
-  alignSelf: "flex-end",
-  paddingVertical: hp("1.15%"),
-  paddingHorizontal: wp("6%"),
-  alignItems: 'center',
-  justifyContent: 'center',
+    borderRadius: 14,
+    marginTop: 4,
+    minWidth: wp("24%"),
+    alignSelf: "flex-end",
+    paddingVertical: hp("1.15%"),
+    paddingHorizontal: wp("6%"),
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   postButtonTextSmall: {
     color: "#FFFFFF",
     textAlign: "center",
-  fontSize: 14,
+    fontSize: 14,
   },
   iconsContainer: {
     flexDirection: "row",
@@ -769,23 +808,23 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   post: {
-  backgroundColor: "#fff",
-  paddingVertical: 16,
-  paddingHorizontal: 12,
-  alignSelf: "stretch",
-  width: "100%",
-  marginBottom: 0,
-  borderBottomWidth: 1,
-  borderBottomColor: "#e5e7eb",
-  position: 'relative',
+    backgroundColor: "#fff",
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    alignSelf: "stretch",
+    width: "100%",
+    marginBottom: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e5e7eb",
+    position: 'relative',
   },
   postText: {
-  marginBottom: 4,
-  color: "#1f2937",
-  fontSize: 16,
-  lineHeight: 24,
-  /* align post text with the username/timestamp (avatar width 44 + avatar marginRight 6 + headerTextContainer marginLeft 6 = 56) */
-  marginLeft: 56,
+    marginBottom: 4,
+    color: "#1f2937",
+    fontSize: 16,
+    lineHeight: 24,
+    /* align post text with the username/timestamp (avatar width 44 + avatar marginRight 6 + headerTextContainer marginLeft 6 = 56) */
+    marginLeft: 56,
   },
   postImage: {
     width: 100,
@@ -798,11 +837,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   avatar: {
-  width: 44,
-  height: 44,
-  borderRadius: 22,
-  marginBottom: 0,
-  marginRight: 6,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginBottom: 0,
+    marginRight: 6,
   },
   pdfAttachedText: {
     marginTop: 10,
@@ -856,14 +895,14 @@ const styles = StyleSheet.create({
     resizeMode: "contain",
   },
   commentButton: {
-  marginTop: 2,
-  paddingVertical: 2,
-  paddingHorizontal: 4,
-  borderRadius: 5,
-  alignItems: "center",
-  flexDirection: "row",
-  justifyContent: "flex-end",
-  width: '100%',
+    marginTop: 2,
+    paddingVertical: 2,
+    paddingHorizontal: 4,
+    borderRadius: 5,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    width: '100%',
   },
   centeredViews: {
     flex: 1,
@@ -922,7 +961,7 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingHorizontal: 16,
     width: '100%',
-  marginBottom: 0,
+    marginBottom: 0,
   },
   headerInner: {
     alignItems: 'center',
@@ -959,17 +998,17 @@ const styles = StyleSheet.create({
     width: 20,
   },
   headerTextContainer: {
-  marginLeft: 6,
+    marginLeft: 6,
     justifyContent: "center",
   },
   userName: {
-  fontSize: 16,
-  marginBottom: 4,
-  fontWeight: '600',
+    fontSize: 16,
+    marginBottom: 4,
+    fontWeight: '600',
   },
   timestamp: {
-  fontSize: 12,
-  color: "#9CA3AF",
+    fontSize: 12,
+    color: "#9CA3AF",
   },
   dropdownIcon: {
     padding: 10,

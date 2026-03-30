@@ -1,4 +1,10 @@
-import { fetchAPI } from "./fetch";
+import { fetchAPI, fetchAPIWithFiles  } from "./fetch";
+import * as SecureStore from 'expo-secure-store';
+
+type PdfFile = {
+  uri: string;
+  name: string;
+};
 
 // Create Post
 export const createPost = async (
@@ -8,6 +14,54 @@ export const createPost = async (
   setUserToken: (token: string | null) => void
 ) => {
   return fetchAPI('/forum/posts', 'POST', { user_id, org_id, content }, setUserToken);
+};
+
+export const createPostWithMedia = async (
+  user_id: number,
+  org_id: number | null,
+  content: string,
+  images: string[],
+  pdfs: PdfFile[],
+  setUserToken: (token: string | null) => void
+) => {
+  const formData = new FormData();
+  formData.append('user_id', String(user_id));
+  if(org_id) formData.append('org_id', String(org_id));
+  formData.append('content', content);
+
+  images.forEach((uri, index) => {
+    formData.append('media', {
+      uri,
+      name: `image_${index}.jpg`,
+      type: 'image/jpeg',
+    } as any);
+  });
+
+  pdfs.forEach((pdf) => {
+    formData.append('media', {
+      uri: pdf.uri,
+      name: pdf.name,
+      type: 'application/pdf',
+    } as any);
+  });
+
+  let token = await SecureStore.getItemAsync("accessToken");
+
+  const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/forum/posts/media`, {
+    method: 'POST',
+    headers: {
+      'Authorization': token ? `Bearer ${token}` : '',
+      // ← No Content-Type here, let fetch set it automatically with the boundary
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Server error: ${response.status} - ${text}`);
+  }
+
+  return await response.json();
 };
 
 // Get all posts

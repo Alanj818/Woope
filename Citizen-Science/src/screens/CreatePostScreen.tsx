@@ -19,7 +19,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { AuthContext } from '../util/AuthContext';
 import { jwtDecode } from 'jwt-decode';
 import { AccessToken } from '../util/token';
-import { createPost } from '../api/posts';
+import { createPostWithMedia } from '../api/posts';
 import { logActivity } from '../api/activity';
 
 interface PdfFile {
@@ -40,6 +40,8 @@ const CreatePostScreen = () => {
   const [postPdfs, setPostPdfs] = useState<PdfFile[]>([]);
   const [error, setError] = useState('');
   const postTextInputRef = useRef<TextInput>(null);
+
+
 
   useFocusEffect(
     React.useCallback(() => {
@@ -108,8 +110,15 @@ const CreatePostScreen = () => {
       return;
     }
     try {
-      const postOrgId = NaN;
-      await createPost(Number(userId), postOrgId, postText, setUserToken);
+      const postOrgId = userOrgId ?? null;
+      await createPostWithMedia(
+        Number(userId),
+        postOrgId,
+        postText,
+        postImages,
+        postPdfs,
+        setUserToken
+      );
       await logActivity(userId, `User created new post with text: "${postText}"`);
 
       // Reset the form
@@ -142,93 +151,93 @@ const CreatePostScreen = () => {
       />
       <SafeAreaView style={styles.container}>
 
-      <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.composerWrapper}>
-          <Image
-            source={{
-              uri: 'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png',
-            }}
-            style={styles.avatar}
-          />
-
-          <View style={styles.composerSection}>
-            <TextInput
-              ref={postTextInputRef}
-              style={styles.input}
-              placeholder="Share what's on your mind..."
-              placeholderTextColor="#9CA3AF"
-              value={postText}
-              onChangeText={setPostText}
-              multiline
-              numberOfLines={8}
+        <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
+          <View style={styles.composerWrapper}>
+            <Image
+              source={{
+                uri: 'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png',
+              }}
+              style={styles.avatar}
             />
 
-            {error && <Text style={styles.errorText}>{error}</Text>}
+            <View style={styles.composerSection}>
+              <TextInput
+                ref={postTextInputRef}
+                style={styles.input}
+                placeholder="Share what's on your mind..."
+                placeholderTextColor="#9CA3AF"
+                value={postText}
+                onChangeText={setPostText}
+                multiline
+                numberOfLines={8}
+              />
 
-            {postImages.length > 0 && (
-              <View style={styles.mediaGrid}>
-                {postImages.map((uri, index) => (
-                  <View key={index} style={styles.imageContainer}>
-                    <Image source={{ uri }} style={styles.previewImage} />
-                    <TouchableOpacity
-                      onPress={() => removeImage(index)}
-                      style={styles.removeImageButton}
-                    >
-                      <MaterialIcons name="close" size={16} color="#fff" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            )}
+              {error && <Text style={styles.errorText}>{error}</Text>}
 
-            {postPdfs.length > 0 && (
-              <View style={styles.pdfContainer}>
-                {postPdfs.map((pdf, index) => (
-                  <View key={index} style={styles.pdfItem}>
-                    <MaterialIcons name="description" size={20} color="#0088ca" />
-                    <Text style={styles.pdfName}>{pdf.name}</Text>
-                    <TouchableOpacity
-                      onPress={() => removePdf(index)}
-                      style={styles.removePdfButton}
-                    >
-                      <MaterialIcons name="close" size={16} color="#6b7280" />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-              </View>
-            )}
+              {postImages.length > 0 && (
+                <View style={styles.mediaGrid}>
+                  {postImages.map((uri, index) => (
+                    <View key={index} style={styles.imageContainer}>
+                      <Image source={{ uri }} style={styles.previewImage} />
+                      <TouchableOpacity
+                        onPress={() => removeImage(index)}
+                        style={styles.removeImageButton}
+                      >
+                        <MaterialIcons name="close" size={16} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {postPdfs.length > 0 && (
+                <View style={styles.pdfContainer}>
+                  {postPdfs.map((pdf, index) => (
+                    <View key={index} style={styles.pdfItem}>
+                      <MaterialIcons name="description" size={20} color="#0088ca" />
+                      <Text style={styles.pdfName}>{pdf.name}</Text>
+                      <TouchableOpacity
+                        onPress={() => removePdf(index)}
+                        style={styles.removePdfButton}
+                      >
+                        <MaterialIcons name="close" size={16} color="#6b7280" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <TouchableOpacity
+            disabled={!postText.trim()}
+            onPress={handleCreatePost}
+            activeOpacity={0.8}
+            style={styles.postButtonWrapper}
+          >
+            <LinearGradient
+              colors={["rgba(0,132,209,1)", "rgba(0,146,184,1)"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[
+                styles.postButton,
+                !postText.trim() && styles.postButtonDisabled,
+              ]}
+            >
+              <Text style={styles.postButtonText}>Post</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <View style={styles.iconRow}>
+            <TouchableOpacity style={styles.iconButton} onPress={pickImage}>
+              <MaterialIcons name="image" size={20} color="#0088ca" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconButton} onPress={pickPdf}>
+              <MaterialIcons name="insert-drive-file" size={20} color="#0088ca" />
+            </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
-
-      <View style={styles.footer}>
-        <TouchableOpacity
-          disabled={!postText.trim()}
-          onPress={handleCreatePost}
-          activeOpacity={0.8}
-          style={styles.postButtonWrapper}
-        >
-          <LinearGradient
-            colors={["rgba(0,132,209,1)", "rgba(0,146,184,1)"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={[
-              styles.postButton,
-              !postText.trim() && styles.postButtonDisabled,
-            ]}
-          >
-            <Text style={styles.postButtonText}>Post</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-        <View style={styles.iconRow}>
-          <TouchableOpacity style={styles.iconButton} onPress={pickImage}>
-            <MaterialIcons name="image" size={20} color="#0088ca" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconButton} onPress={pickPdf}>
-            <MaterialIcons name="insert-drive-file" size={20} color="#0088ca" />
-          </TouchableOpacity>
-        </View>
-      </View>
       </SafeAreaView>
     </>
   );

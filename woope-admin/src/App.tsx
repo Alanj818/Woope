@@ -13,6 +13,7 @@ import OrgProfile from "./screens/OrgProfile";
 import PinManager from "./screens/PinManager";
 import PermissionManager from "./screens/PermissionManager";
 import PurpleAirPinsManager from "./screens/PurpleAirPinsManager"
+import LogManager from "./screens/LogManager"
 
 function App() {
   const { userToken, userRole } = useContext(AuthContext);
@@ -118,6 +119,16 @@ function App() {
           <ProtectedRoute isAuthenticated={!!userToken} userRole={userRole}>
             <Layout>
               <PurpleAirPinsManager />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/logs"
+        element={
+          <ProtectedRoute isAuthenticated={!!userToken} userRole={userRole}>
+            <Layout>
+              <LogManager/>
             </Layout>
           </ProtectedRoute>
         }

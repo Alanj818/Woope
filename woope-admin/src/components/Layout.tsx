@@ -72,6 +72,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   PurpleAir Pins
                 </Link>
               </li>
+              <li className="nav-item">
+                <Link className="nav-link" to="/logs">
+                  Logs
+                </Link>
+              </li>
               <li className="nav-item dropdown">
                 <button
                   className="btn dropdown-toggle"

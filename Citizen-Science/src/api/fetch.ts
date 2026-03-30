@@ -92,6 +92,9 @@ export async function fetchAPI(
     config.body = JSON.stringify(body);
   }
 
+  console.log("API URL:", process.env.EXPO_PUBLIC_API_URL);
+  console.log("FULL URL:", `${process.env.EXPO_PUBLIC_API_URL}${endpoint}`);
+
   let response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}${endpoint}`, config);
 
   if (response.status === 401 && setUserToken) {

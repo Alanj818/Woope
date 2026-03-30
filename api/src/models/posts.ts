@@ -1,7 +1,10 @@
-import { Post, PostWithUsername, PostWithMedia, UserLikedPosts } from "../interfaces/post";
+import { Post, PostWithUsername, PostWithMedia, UserLikedPosts, PostMedia } from "../interfaces/post";
 import { logPosts } from "./userActions";
+import fs from 'fs'
+import path from 'path'
 
 const pool = require('../db');
+
 
 export const getPostWithMedia = async (currentUserId: number): Promise<PostWithMedia[]> => {
   const query = `
@@ -12,15 +15,14 @@ export const getPostWithMedia = async (currentUserId: number): Promise<PostWithM
           COALESCE(COUNT(post_likes.post_id), 0) AS likes_count,
           BOOL_OR(post_likes.user_id = $1) AS user_liked,
           json_agg(
-              json_build_object(
-                  'media_id', post_media.media_id,
-                  'media_type', post_media.media_type,
-                  'media_url', post_media.media_url,
-                  'created_at', post_media.created_at,
-                  'updated_at', post_media.updated_at
-              )
-              FILTER (WHERE post_media.media_id IS NOT NULL)
-          ) AS media
+            json_build_object(
+              'media_id', post_media.media_id,
+              'media_type', post_media.media_type,
+              'media_url', post_media.media_url,
+              'created_at', post_media.created_at,
+              'updated_at', post_media.updated_at
+            )
+          ) FILTER (WHERE post_media.media_id IS NOT NULL) AS media
       FROM posts
       JOIN profile_information ON posts.user_id = profile_information.user_id
       LEFT JOIN post_likes ON posts.post_id = post_likes.post_id
@@ -80,12 +82,14 @@ export const getPostByUserId = async (user_id: number): Promise<Post[]> => {
 }
 
 export const createPost = async (user_id: number, org_id: number | null, content: string): Promise<Post> => {
+
   try {
     const isActive = true;
     const response = await pool.query(
       'INSERT INTO posts (user_id, content, is_active, org_id) VALUES ($1, $2, $3, $4) RETURNING *',
       [user_id, content, isActive, org_id]
     );
+    console.log("Logging post for user:", user_id, typeof user_id);
     await logPosts(user_id);
     return response.rows[0];
   } catch (error) {
@@ -93,6 +97,19 @@ export const createPost = async (user_id: number, org_id: number | null, content
     throw error;
   }
 }
+
+export const savePostMedia = async (
+  post_id: number,
+  media_url: string,
+  media_type: 'Image' | 'PDF'
+): Promise<PostMedia> => {
+  const response = await pool.query(
+    `INSERT INTO post_media (post_id, media_url, media_type)
+     VALUES ($1, $2, $3) RETURNING *`,
+    [post_id, media_url, media_type]
+  );
+  return response.rows[0];
+};
 
 export const updatePost = async (post_id: number, content: string): Promise<Post> => {
   try {
@@ -149,6 +166,26 @@ export const deletePost = async (post_id: number): Promise<void> => {
     client.release();
   }
 }
+
+export const deletePostMedia = async (post_id: number): Promise<void> => {
+  try {
+    // Get all media urls for this post so we can delete the files too
+    const result = await pool.query(
+      'SELECT media_url FROM post_media WHERE post_id = $1',
+      [post_id]
+    );
+    // Delete each file from filesystem
+    result.rows.forEach((row: { media_url: string }) => {
+      const filePath = path.join('/var/www/media', row.media_url);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    });
+    // Then delete DB rows
+    await pool.query('DELETE FROM post_media WHERE post_id = $1', [post_id]);
+  } catch (error) {
+    console.error(`Error deleting media for post ${post_id}`, error);
+    throw error;
+  }
+};
 
 export const addPostLike = async (post_id: number, user_id: number): Promise<void> => {
   try {
