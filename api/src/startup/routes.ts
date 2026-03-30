@@ -14,6 +14,8 @@ let reportRouter = require('../routes/report');
 let activityRouter = require('../routes/activity').default
 let purpleAirPinsRouter = require('../routes/purpleAirRouter').default;
 let userActionsRoutes = require("../routes/userActionsRoutes"); 
+import intervalSettingsRouter from '../routes/intervalSettings';
+
 // add more routers here
 
 module.exports = function (app: express.Application) {
@@ -31,6 +33,7 @@ module.exports = function (app: express.Application) {
     app.use('/roles', rolesRouter);
     app.use('/report', reportRouter); 
     app.use('/activity', activityRouter);
+    app.use('/settings', intervalSettingsRouter);
     app.use('/purpleair', purpleAirPinsRouter);
     app.use('/logs', userActionsRoutes);
 
