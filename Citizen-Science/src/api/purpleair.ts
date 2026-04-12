@@ -29,3 +29,28 @@ export const getPurpleAirDevice = async (
 ) => {
   return fetchAPI(`/purpleair/devices/${sensorId}`, "GET", null, setUserToken);
 };
+export type SensorReading = {
+  hour: string;
+  temp_c: string;
+  temp_f: string;
+  humidity: string;
+  pressure: string;
+  pm25: string;
+  pm10: string;
+  voc: string;
+};
+
+export type SensorHistory = {
+  sensorId: string;
+  computedAt: string;
+  daysCovered: number;
+  count: number;
+  data: SensorReading[];
+};
+
+export const getPurpleAirDeviceHistory = async (
+  sensorId: number,
+  setUserToken?: (token: string | null) => void
+) => {
+  return fetchAPI(`/purpleair/devices/${sensorId}/history`, "GET", null, setUserToken);
+};

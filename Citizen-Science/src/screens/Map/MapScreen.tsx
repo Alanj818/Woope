@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useContext } from 'react';
 import { createPinNew, getAllPinsNew, deletePinNew, updatePinNew } from '../../api/pins';
 import { getAllPurpleAirDevices } from '../../api/purpleair';
 import { getAllTtnDevices } from "../../api/ttn";
+import { SensorHistoryChart } from '../../components/SensorHistoryChart';
 
 import {
   View,
@@ -80,6 +81,7 @@ export const MapScreen = () => {
   const [isMarkerPressed, setIsMarkerPressed] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [filterTag, setFilterTag] = useState('All');
+  const [showHistory, setShowHistory] = useState(false);
 
   const isMarkerPressedRef = useRef(false);
 
@@ -113,7 +115,6 @@ export const MapScreen = () => {
         allPins = [];
       }
 
-      // ✅ Updated: fetch PurpleAir data from our backend instead of PurpleAir directly
       let data: any[] = [];
       try {
         data = await getAllPurpleAirDevices(setUserToken);
@@ -145,14 +146,13 @@ export const MapScreen = () => {
         },
       }));
 
-      // ✅ Updated: data is now flat from our backend, no nested sensor object
       const purpleAirPins = (data || []).map((sensor: any, index: number) => ({
-        pin_id: -(index + 1),
+        pin_id: -(sensor.sensor_id),
         name: sensor?.name || `PurpleAir Sensor ${index + 1}`,
         date: sensor?.received_at
           ? new Date(sensor.received_at).toISOString().split('T')[0]
           : new Date().toISOString().split('T')[0],
-        description: `Air quality sensor, Temp: ${sensor?.temperature_c ?? '—'}°C, PM2.5: ${sensor?.pm2_5_atm ?? '—'} µg/m³`,
+        description: `Air quality sensor, Temp: ${sensor?.temperature_c ?? '—'}°F, PM2.5: ${sensor?.pm2_5_atm ?? '—'} µg/m³`,
         tag: "Weather",
         image: null,
         location: {
@@ -161,12 +161,11 @@ export const MapScreen = () => {
         },
       }));
 
-      // ✅ Updated: use source_id instead of device_id
       const ttnPins = (ttnDevices || [])
         .filter((d: any) => typeof d?.latitude === "number" && typeof d?.longitude === "number")
         .map((d: any, index: number) => ({
           pin_id: -(10000 + index + 1),
-          name: d.source_id, // ✅ updated from d.device_id
+          name: d.source_id,
           date: d.last_received_at
             ? new Date(d.last_received_at).toISOString().split('T')[0]
             : new Date().toISOString().split('T')[0],
@@ -274,6 +273,7 @@ export const MapScreen = () => {
   const closeDetailsModal = () => {
     setSelectedPin(null);
     setDetailsVisible(false);
+    setShowHistory(false);
     isMarkerPressedRef.current = false;
     setIsMarkerPressed(false);
   };
@@ -664,17 +664,39 @@ export const MapScreen = () => {
             </TouchableOpacity>
           </View>
 
-          {selectedPin && (
-            <>
-              <Text style={styles.detailsTitle}>{selectedPin.name}</Text>
-              <Text style={styles.detailsDate}>Date: {selectedPin.date}</Text>
-              <Text style={styles.detailsDescription}>{selectedPin.description}</Text>
-              <Text style={styles.detailsTag}>Tag: {selectedPin.tag}</Text>
-              {selectedPin.image && (
-                <Image source={{ uri: selectedPin.image }} style={styles.detailsImage} />
-              )}
-            </>
-          )}
+          <ScrollView>
+            {selectedPin && (
+              <>
+                <Text style={styles.detailsTitle}>{selectedPin.name}</Text>
+                <Text style={styles.detailsDate}>Date: {selectedPin.date}</Text>
+                <Text style={styles.detailsDescription}>{selectedPin.description}</Text>
+                <Text style={styles.detailsTag}>Tag: {selectedPin.tag}</Text>
+                {selectedPin.image && (
+                  <Image source={{ uri: selectedPin.image }} style={styles.detailsImage} />
+                )}
+
+                {selectedPin.pin_id < 0 && selectedPin.pin_id > -10000 && (
+                  <>
+                    <TouchableOpacity
+                      style={styles.historyButton}
+                      onPress={() => setShowHistory(prev => !prev)}
+                    >
+                      <Text style={styles.historyButtonText}>
+                        {showHistory ? 'Hide history' : 'View 30 day history'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {showHistory && (
+                      <SensorHistoryChart
+                        sensorId={Math.abs(selectedPin.pin_id)}
+                        setUserToken={setUserToken}
+                      />
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </ScrollView>
         </View>
       </Modal>
     </View>
@@ -856,5 +878,17 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 16,
     textAlign: 'center',
+  },
+  historyButton: {
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 12,
+    alignItems: 'center',
+  },
+  historyButtonText: {
+    color: '#007AFF',
+    fontWeight: '500',
+    fontSize: 14,
   },
 });
