@@ -113,7 +113,6 @@ export const MapScreen = () => {
         allPins = [];
       }
 
-      // ✅ Updated: fetch PurpleAir data from our backend instead of PurpleAir directly
       let data: any[] = [];
       try {
         data = await getAllPurpleAirDevices(setUserToken);
@@ -619,6 +618,176 @@ export const MapScreen = () => {
           )}
         </MapView>
       )}
+
+      {/* Modal for Adding a New Pin */}
+      <Modal visible={modalVisible} animationType="slide" transparent={true}>
+				<TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+					<View style={styles.modalContainer}>
+						<Text style={styles.modalTitle}>
+							{isEditMode ? 'Update Pin' : 'Add a New Pin'}
+						</Text>
+						<TextInput
+							style={styles.input}
+							placeholder="Name"
+							value={formData.name}
+							onChangeText={(text) => setFormData({ ...formData, name: text })}
+						/>
+						{/* Simple Date Picker */}
+						<TouchableOpacity
+							style={styles.datePicker}
+							onPress={() => setShowDatePicker(true)}
+						>
+							<Text style={styles.datePickerText}>
+								{formData.date ? formData.date : 'Pick a Date'}
+							</Text>
+						</TouchableOpacity>
+						{showDatePicker && (
+							<DateTimePicker
+								value={new Date()}
+								mode="date"
+								display="default"
+								onChange={(event, selectedDate) => {
+									setShowDatePicker(false); // Close the picker
+									if (selectedDate) {
+										setFormData({
+											...formData,
+											date: selectedDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
+										});
+									}
+								}}
+							/>
+						)}
+						<TextInput
+							style={[styles.input, styles.textArea]}
+							placeholder="Description"
+							multiline
+							numberOfLines={4}
+							value={formData.description}
+							onChangeText={(text) => setFormData({ ...formData, description: text })}
+						/>
+						{/* Tag Select */}
+						<View
+							style={{
+								width: '80%',
+								alignSelf: 'center',
+								backgroundColor: 'rgba(240,240,240,0.95)',
+								padding: 10,
+								borderRadius: 10,
+								marginBottom: 20,
+							}}
+						>
+							<Text style={{ marginBottom: 5, fontWeight: 'bold' }}>Tag</Text>
+							<View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+								{tagItems.map((item) => (
+									<TouchableOpacity
+										key={item.value}
+										onPress={() => setFormData({ ...formData, tag: item.value })}
+										style={{
+											backgroundColor: formData.tag === item.value ? '#007AFF' : '#e0e0e0',
+											paddingVertical: 6,
+											paddingHorizontal: 12,
+											borderRadius: 5,
+											marginRight: 8,
+											marginBottom: 8,
+										}}
+									>
+										<Text
+											style={{
+												color: formData.tag === item.value ? 'white' : 'black',
+											}}
+										>
+											{item.label}
+										</Text>
+									</TouchableOpacity>
+								))}
+							</View>
+						</View>
+
+						{/* Image Picker */}
+						<View
+							style={{
+								width: '80%',
+								alignSelf: 'center',
+								backgroundColor: 'rgba(240,240,240,0.95)',
+								padding: 10,
+								borderRadius: 10,
+								marginBottom: 20,
+							}}
+						>
+							<Text style={{ marginBottom: 10, fontWeight: 'bold' }}>Media</Text>
+
+							<View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+								<TouchableOpacity
+									style={{
+										backgroundColor: '#ccc',
+										padding: 10,
+										borderRadius: 5,
+										flex: 1,
+										marginRight: 5,
+									}}
+									onPress={handlePickImage}
+								>
+									<Text style={{ textAlign: 'center', color: '#000' }}>
+										{formData.image ? 'Change Image' : 'Add Image'}
+									</Text>
+								</TouchableOpacity>
+
+								<TouchableOpacity
+									style={{
+										backgroundColor: '#007AFF',
+										padding: 10,
+										borderRadius: 5,
+										flex: 1,
+										marginLeft: 5,
+									}}
+									onPress={handleOpenCamera}
+								>
+									<Text style={{ textAlign: 'center', color: '#fff', fontWeight: 'bold' }}>
+										Open Camera
+									</Text>
+								</TouchableOpacity>
+							</View>
+
+							{formData.image && (
+								<Image
+									source={{ uri: formData.image }}
+									style={{ width: 100, height: 100, marginTop: 10, alignSelf: 'center', borderRadius: 5 }}
+								/>
+							)}
+						</View>
+						{/* Action Buttons */}
+						<View style={styles.buttonContainer}>
+
+							<TouchableOpacity
+								style={styles.cancelButton}
+								onPress={() => {
+									setFormData({
+										name: '',
+										date: '',
+										description: '',
+										tag: 'General',
+										image: null,
+										location: null
+									}); // Clear form data
+									setModalVisible(false); // Close the modal
+								}}
+							>
+								<Text style={styles.buttonText}>Cancel</Text>
+							</TouchableOpacity>
+
+
+							<TouchableOpacity
+								style={styles.submitButton}
+								onPress={isEditMode ? handlePinUpdateFormSubmit : handleFormSubmit}
+							>
+								<Text style={styles.buttonText}>{isEditMode ? 'Update' : 'Submit'}</Text>
+							</TouchableOpacity>
+
+						</View>
+					</View>
+				</TouchableWithoutFeedback>
+			</Modal>
+
 
       <Modal visible={detailsVisible} animationType="slide" transparent={true}>
         <View style={styles.detailsContainer}>
