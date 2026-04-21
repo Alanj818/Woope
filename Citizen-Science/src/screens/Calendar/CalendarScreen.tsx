@@ -10,8 +10,14 @@ import { AuthContext } from '../../util/AuthContext';
 import { jwtDecode } from 'jwt-decode';
 import { AccessToken } from '../../util/token';
 import CreateUserEvent from './CreateUserEvent';
+import CreateEvent from '../Events/CreateEvent';
+import { LinearGradient } from 'expo-linear-gradient';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialIcons } from '@expo/vector-icons';
+import Octicons from 'react-native-vector-icons/Octicons';
 
-import ScreenHeader from '../../components/ScreenHeader';
+import TopNav from '../../components/TopNav';
 
 interface Arguments {
   marked: boolean;
@@ -27,11 +33,13 @@ interface Marks {
 
 const CalendarScreen = () => {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const { userToken, setUserToken } = useContext(AuthContext);
   const decodedToken = userToken ? jwtDecode<AccessToken>(userToken) : null;
   const userId = decodedToken ? decodedToken.user_id : NaN;
-  const [isLoading, setIsLoading] =useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedValue, setSelectedValue] = useState(new Date());
+  const [modalVisible, setModalVisible] = useState(false);
   let [generalMarks, setGeneralMarks] = useState<Marks[]>([]);
   let [followedMarks, setFollowedMarks] = useState<Marks[]>([]);
   let [userMarks, setUserMarks] = useState<Marks[]>([]);
@@ -40,8 +48,7 @@ const CalendarScreen = () => {
   const generalColor = {color:'blue'};
   const followedColor = {color: 'red'};
   const userColor = {color: 'lightgreen'};
-  const [modalVisible, setModalVisible] = useState(false);
-   
+
   // gets all dates with marks/types of marks and once all promises are successful
   // creates the marks and applies them to the calendar
   useFocusEffect(
@@ -138,51 +145,43 @@ const CalendarScreen = () => {
   }
 
   return (
-    <SafeAreaView>
-      <ScreenHeader navigation={null} />
-
-      {/* Header */}
-      <View style={styles.headerContainer}>
-        <Text style={styles.headerTitle}> Calendar </Text>
-
-        <TouchableOpacity style={styles.headerButton} onPress={() => navigation.navigate('CreateUserEvent')}>
-          <Image style={styles.addButton} source={require("../../../assets/addButton.png")}/>
-        </TouchableOpacity>
-
-
-      </View>
-
-      {/* calendar */}
-      <View style={styles.container}> 
-        <View style={styles.calendarContainer}>
-            <Calendar
-                enableSwipeMonths
-                displayLoadingIndicator = {isLoading}
-                current={selectedValue.toDateString()}
-                style={styles.calendar}
-                onDayPress={onDayPress}
-                onPressArrowLeft={subtractMonth => {
-                  setSelectedValue(subMonths(selectedValue, 1));
-                  subtractMonth();
-                }}
-                onPressArrowRight={addMonth => {
-                  setSelectedValue(addMonths(selectedValue, 1));
-                  addMonth();
-                }}
-                markingType={'multi-dot'}
-                markedDates={marks}
-              />
-          </View>
-
-        {/* Events */}
-        <View>
-          <Text style ={styles.eventHeader}>Upcoming Events</Text>
+    <>
+      <TopNav title="Calendar" />
+      <SafeAreaView style={[styles.container, { backgroundColor: 'transparent', paddingTop: 0 }]}> 
+        <View style={styles.header}>
+          <Text style={styles.title}>Add Event</Text>
+          <TouchableOpacity onPress={() => setModalVisible(true)}>
+            <Octicons style={styles.addIcon} name='diff-added' size={28} color="#0084D1" />
+          </TouchableOpacity>
         </View>
 
-      
-      </View>
-      <CreateUserEvent user_id={userId} isVisible={modalVisible} onClose={() => setModalVisible(false)} />
-    </SafeAreaView>
+        <View style={[styles.calendarContainer, { marginTop: 0 }]}>
+          <Calendar
+            enableSwipeMonths
+            displayLoadingIndicator={isLoading}
+            current={selectedValue.toDateString()}
+            style={styles.calendar}
+            onDayPress={onDayPress}
+            onPressArrowLeft={subtractMonth => {
+              setSelectedValue(subMonths(selectedValue, 1));
+              subtractMonth();
+            }}
+            onPressArrowRight={addMonth => {
+              setSelectedValue(addMonths(selectedValue, 1));
+              addMonth();
+            }}
+            markingType={'multi-dot'}
+            markedDates={marks}
+          />
+        </View>
+
+        <View>
+          <Text style={styles.eventHeader}>Upcoming Events</Text>
+        </View>
+
+        <CreateEvent org_id={userId} isVisible={modalVisible} onClose={() => setModalVisible(false)} />
+      </SafeAreaView>
+    </>
   );
 };
 
@@ -299,32 +298,24 @@ postBoxText: {
     textAlign: "center",
 },
  header: {
-    height: 56,
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'white',
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    backgroundColor: '#fff',
+    borderBottomColor: '#ddd',
   },
 
-  headerTitle: {
-    textAlign: 'center',
-    fontSize: 25,
-    fontFamily: "Inter-Regular",
-    marginLeft: -270, 
-    marginTop: 10, 
-  },
-
-  headerButton: {
-    position: 'absolute',
-    right: 16,
-    padding: 8,
-  },
-
-  headerButtonText: {
-    fontSize: 22,
+  title: {
+    fontSize: 18,
     fontWeight: '600',
+    color: '#333',
+  },
+
+  addIcon: {
+    padding: 8,
   },
 
   eventHeader:{
@@ -338,6 +329,22 @@ postBoxText: {
   addButton:{
     width: 70,
     height: 70,
-  }
+  },
+  addButtonContainer: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    backgroundColor: '#007AFF',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
 
 });
