@@ -2,6 +2,7 @@ import axios from "axios";
 import fs from "fs";
 import path from "path";
 const pool = require("../db");
+import { storeSensorHistory } from './sensorData';
 
 const PURPLE_AIR_URL = "https://api.purpleair.com/v1/sensors";
 const CONFIG_PATH = path.join(__dirname, "../config.json");
@@ -14,7 +15,7 @@ const FIELDS = [
   "pm2.5_cf_1",
   "pm10.0",
   "temperature",
-  "humidity",
+  "humidity", 
   "pressure",
   "voc",
 ].join(",");
@@ -113,6 +114,29 @@ export async function fetchAndLogPurpleAirData() {
 
       console.log(`✅ Logged PurpleAir data: sensor_id=${sensor.id} source_id=${sensorIndex}`);
     }
+
+    for (const sensor of sensorsResult.rows) {
+      const result = await pool.query(`
+        SELECT
+          DATE_TRUNC('hour', received_at)                       AS hour,
+          AVG(temperature_c)                                    AS temp_c,
+          ROUND((AVG(temperature_c) * 9.0/5 + 32)::numeric, 1) AS temp_f,
+          AVG(humidity_pct)                                     AS humidity,
+          AVG(pressure_mb)                                      AS pressure,
+          AVG(pm2_5_atm)                                        AS pm25,
+          AVG(pm10_0)                                           AS pm10,
+          AVG(voc)                                              AS voc
+        FROM sensor_logs
+        WHERE sensor_id = $1
+          AND received_at >= NOW() - INTERVAL '30 days'
+        GROUP BY 1
+        ORDER BY 1 ASC
+      `, [sensor.id]);
+
+      storeSensorHistory(sensor.id, result.rows);
+      console.log(`🟣 Precomputed history: sensor_id=${sensor.id} rows=${result.rows.length}`);
+    }
+
   } catch (err: any) {
     console.error("❌ Full error:", err?.response?.data);
     console.error("❌ Failed to fetch/log PurpleAir data:", {
