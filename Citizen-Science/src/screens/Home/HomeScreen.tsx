@@ -80,6 +80,7 @@ const HomeScreen = () => {
   const userOrgName = decodedToken ? decodedToken.org_name : null;
   const userId = decodedToken ? decodedToken.user_id : NaN;
   const [posts, setPosts] = useState<PostWithUsername[]>([]);
+  const [activeImageIndex, setActiveImageIndex] = useState<{ [postId: number]: number }>({});
   const [error, setError] = useState("");
   const [isImageViewVisible, setImageViewVisible] = useState(false);
   const [selectedImageUri, setSelectedImageUri] = useState("");
@@ -201,10 +202,17 @@ const HomeScreen = () => {
         commentsMap[post.post_id] = postComments;
       }
       setCommentsMap(commentsMap);
+      console.log('Avatar URLs:', postsList.map((p: any) => ({
+        post_id: p.post_id,
+        user_avatar_url: p.user_avatar_url,
+        userName: p.userName,
+      })));
     } catch (error) {
       console.error(error);
       setError("Failed to fetch posts.");
     }
+
+
   };
   const onRefresh = async () => {
     setRefreshing(true);
@@ -213,20 +221,20 @@ const HomeScreen = () => {
     await logActivity(userId, `Refreshed post feed.`)
   };
 
-
-  const handleOpenPdf = async (pdfUri: string) => {
-    try {
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable) {
-        await Sharing.shareAsync(pdfUri);
-      } else {
-        alert("Sharing is not available");
-      }
-    } catch (error) {
-      alert("An error occurred while trying to share the PDF.");
-      console.error(error);
-    }
-  };
+  // Deprecated Pdf opener
+  // const handleOpenPdf = async (pdfUri: string) => {
+  //   try {
+  //     const isAvailable = await Sharing.isAvailableAsync();
+  //     if (isAvailable) {
+  //       await Sharing.shareAsync(pdfUri);
+  //     } else {
+  //       alert("Sharing is not available");
+  //     }
+  //   } catch (error) {
+  //     alert("An error occurred while trying to share the PDF.");
+  //     console.error(error);
+  //   }
+  // };
 
   const handleImagePress = (uri: string) => {
     setSelectedImageUri(uri);
@@ -431,19 +439,23 @@ const HomeScreen = () => {
                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                       <Image
                         source={{
-                          uri:
-                            (item as any)?.user_avatar_url ||
-                            "https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png",
+                          uri: (item as any)?.user_avatar_url
+                            ? `${process.env.EXPO_PUBLIC_API_URL}${(item as any).user_avatar_url}`
+                            : `https://ui-avatars.com/api/?name=User&background=e5e7eb&color=6b7280&size=128`
                         }}
                         style={styles.avatar}
                         onError={(e) => console.log("Picture is not showing up")}
                       />
+
+                      {/* Name and Time posted */}
                       <View style={styles.headerTextContainer}>
                         <Text style={styles.userName}>{item.userName}</Text>
                         <Text style={styles.timestamp}>
                           {formatTimeAgo(item.created_at)}
                         </Text>
                       </View>
+
+
                     </View>
                     {userCanDeletePost(item) && (
                       <TouchableOpacity
@@ -466,41 +478,80 @@ const HomeScreen = () => {
                     </View>
                   )}
 
-                  {item.content && <Text style={styles.postText}>{item.content}</Text>}
-
+                  {/* Image & Pdf renderer for comments */}
                   {item.media && item.media.length > 0 && (
-                    <View style={{ marginLeft: 56, marginTop: 8, gap: 8 }}>
-                      {item.media
-                        .filter((m: any) => m.media_type === 'Image')
-                        .map((m: any) => {
-                          const url = `${process.env.EXPO_PUBLIC_API_URL}${m.media_url}`;
-                          return (
-                            <TouchableOpacity key={m.media_id} onPress={() => handleImagePress(url)}>
-                              <Image
-                                source={{ uri: url }}
-                                style={{ width: '100%', height: 200, borderRadius: 12, backgroundColor: '#e5e7eb' }}
-                                resizeMode="cover"
-                              />
-                            </TouchableOpacity>
-                          );
-                        })
-                      }
+                    <View style={{ marginLeft: 10, marginTop: 8, gap: 8 }}>
 
-                      {item.media
+
+                      {(() => {
+                        const images = item.media.filter((m: any) => m.media_type === 'Image');
+                        if (images.length === 0) return null;
+                        const imageWidth = Dimensions.get('window').width - 100;
+                        const currentIndex = activeImageIndex[item.post_id] ?? 0;
+                        return (
+                          <View>
+                            <FlatList
+                              data={images}
+                              horizontal
+                              pagingEnabled
+                              showsHorizontalScrollIndicator={false}
+                              keyExtractor={(m: any) => m.media_id.toString()}
+                              style={{ width: imageWidth }}
+                              onScroll={(e) => {
+                                const index = Math.round(e.nativeEvent.contentOffset.x / imageWidth);
+                                setActiveImageIndex((prev) => ({ ...prev, [item.post_id]: index }))
+                              }}
+                              scrollEventThrottle={16}
+                              renderItem={({ item: m }: { item: any }) => {
+                                const url = `${process.env.EXPO_PUBLIC_API_URL}${m.media_url}`;
+                                return (
+                                  <TouchableOpacity onPress={() => handleImagePress(url)} activeOpacity={0.9}>
+                                    <Image
+                                      source={{ uri: url }}
+                                      style={{
+                                        width: imageWidth,
+                                        height: 200,
+                                        borderRadius: 12,
+                                        backgroundColor: '#e5e7eb',
+                                      }}
+                                      resizeMode="cover"
+                                    />
+                                  </TouchableOpacity>
+                                );
+                              }}
+                            />
+                            {images.length > 1 && (
+                              <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 6, gap: 4 }}>
+                                {images.map((_: any, idx: number) => (
+                                  <View key={idx} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: idx === currentIndex ? '#9CA3AF' : '#D1D5DB' }} />
+                                ))}
+                              </View>
+                            )}
+                          </View>
+                        );
+                      })()}
+                      {/* PDF viewer */}
+                      {/* {item.media
                         .filter((m: any) => m.media_type === 'PDF')
                         .map((m: any) => (
                           <TouchableOpacity
                             key={m.media_id}
                             onPress={() => handleOpenPdf(`${process.env.EXPO_PUBLIC_API_URL}${m.media_url}`)}
-                            style={{ flexDirection: 'row', alignItems: 'center', padding: 10, backgroundColor: '#f9fafb', borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb' }}
+                            style={{ flexDirection: 'row', alignItems: 'center', padding: 90, backgroundColor: '#f9fafb', borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb' }}
                           >
                             <MaterialIcons name="description" size={20} color="#0088ca" />
-                            <Text style={{ marginLeft: 8, color: '#111827', fontSize: 14 }}>{m.media_url.split('/').pop()}</Text>
+                            <Text style={{ marginLeft: 4, color: '#111827', fontSize: 14 }}>{m.media_url.split('/').pop()}</Text>
                           </TouchableOpacity>
                         ))
-                      }
+                      } */}
                     </View>
                   )}
+
+                  {/* Displays the description of the comment */}
+                  {item.content && <Text style={styles.postText}>{item.content}</Text>}
+
+
+
 
                   {isDropdownOpen && (
                     <TouchableOpacity
@@ -999,8 +1050,10 @@ const styles = StyleSheet.create({
     width: 20,
   },
   headerTextContainer: {
-    marginLeft: 6,
-    justifyContent: "center",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: "center",
+    gap: 10,
   },
   userName: {
     fontSize: 16,

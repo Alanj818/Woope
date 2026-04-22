@@ -1,15 +1,5 @@
 import React, { useContext, useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  Image,
-  SafeAreaView,
-} from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Alert, Image, SafeAreaView } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -37,6 +27,7 @@ const CreatePostScreen = () => {
 
   const [postText, setPostText] = useState('');
   const [postImages, setPostImages] = useState<string[]>([]);
+  const MAX_IMAGES = 4
   const [postPdfs, setPostPdfs] = useState<PdfFile[]>([]);
   const [error, setError] = useState('');
   const postTextInputRef = useRef<TextInput>(null);
@@ -64,46 +55,65 @@ const CreatePostScreen = () => {
   );
 
   const pickImage = async () => {
+    //Limit the amount of images a user can post
+    const remainingSlots = MAX_IMAGES - postImages.length
+
+    if (remainingSlots <= 0) {
+      Alert.alert("Max photos submitted", `You can only upload ${MAX_IMAGES} images`);
+      return;
+    }
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       aspect: [4, 3],
       quality: 1,
       allowsMultipleSelection: true,
+      selectionLimit: remainingSlots, //for ios this limits the max you can select
     });
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const uris = result.assets.map((asset) => asset.uri);
-      setPostImages((prevImages) => [...prevImages, ...uris]);
+
+      //Make one last check before selecting photos to make sure you have under the max amount of photos
+      setPostImages((prevImages) => {
+        const combined = [...prevImages, ...uris];
+        return combined.slice(0, MAX_IMAGES);
+      });
     }
   };
 
-  const pickPdf = async () => {
-    try {
-      if (postPdfs.length < 10) {
-        const result = await DocumentPicker.getDocumentAsync({
-          type: 'application/pdf',
-          copyToCacheDirectory: true,
-          multiple: true,
-        });
+  //We have deprecated the file upload feature, uncommit if bring it back :)
+  // const pickPdf = async () => {
+  //   try {
+  //     if (postPdfs.length < 10) {
+  //       const result = await DocumentPicker.getDocumentAsync({
+  //         type: 'application/pdf',
+  //         copyToCacheDirectory: true,
+  //         multiple: true,
+  //       });
 
-        if (!result.canceled && result.assets) {
-          const newPdfFiles = result.assets.map((asset) => ({
-            uri: asset.uri,
-            name: asset.name || 'Unknown Name',
-          }));
-          setPostPdfs((prev) => [...prev, ...newPdfFiles]);
-        }
-      } else {
-        Alert.alert('Limit Reached', 'You can only select up to ten PDF files.');
-      }
-    } catch (error) {
-      console.error('Error picking PDFs:', error);
-    }
-  };
+  //       if (!result.canceled && result.assets) {
+  //         const newPdfFiles = result.assets.map((asset) => ({
+  //           uri: asset.uri,
+  //           name: asset.name || 'Unknown Name',
+  //         }));
+  //         setPostPdfs((prev) => [...prev, ...newPdfFiles]);
+  //       }
+  //     } else {
+  //       Alert.alert('Limit Reached', 'You can only select up to ten PDF files.');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error picking PDFs:', error);
+  //   }
+  // };
+
+
+  // const removePdf = (index: number) => {
+  //   setPostPdfs((prev) => prev.filter((_, i) => i !== index));
+  // };
 
   const handleCreatePost = async () => {
     setError('');
-    if (!postText.trim()) {
-      setError('Please provide text for your post.');
+    if (!postText.trim() && postImages.length <= 0 ) {
+      setError('Please provide text for your post or a image.');
       return;
     } else if (userId === null) {
       setError('Please login to post.');
@@ -138,9 +148,7 @@ const CreatePostScreen = () => {
     setPostImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const removePdf = (index: number) => {
-    setPostPdfs((prev) => prev.filter((_, i) => i !== index));
-  };
+  
 
   return (
     <>
@@ -170,6 +178,7 @@ const CreatePostScreen = () => {
                 onChangeText={setPostText}
                 multiline
                 numberOfLines={8}
+                maxLength={25000}
               />
 
               {error && <Text style={styles.errorText}>{error}</Text>}
@@ -190,7 +199,8 @@ const CreatePostScreen = () => {
                 </View>
               )}
 
-              {postPdfs.length > 0 && (
+              {/* Deprectaed fire upload feature */}
+              {/* {postPdfs.length > 0 && (
                 <View style={styles.pdfContainer}>
                   {postPdfs.map((pdf, index) => (
                     <View key={index} style={styles.pdfItem}>
@@ -205,25 +215,20 @@ const CreatePostScreen = () => {
                     </View>
                   ))}
                 </View>
-              )}
+              )} */}
             </View>
           </View>
         </ScrollView>
 
         <View style={styles.footer}>
-          <TouchableOpacity
-            disabled={!postText.trim()}
-            onPress={handleCreatePost}
-            activeOpacity={0.8}
-            style={styles.postButtonWrapper}
-          >
+          <TouchableOpacity disabled={!postText.trim() && postImages.length <= 0} onPress={handleCreatePost} activeOpacity={0.8} style={styles.postButtonWrapper}>
             <LinearGradient
               colors={["rgba(0,132,209,1)", "rgba(0,146,184,1)"]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={[
                 styles.postButton,
-                !postText.trim() && styles.postButtonDisabled,
+                !postText.trim() && postImages.length <= 0 && styles.postButtonDisabled,
               ]}
             >
               <Text style={styles.postButtonText}>Post</Text>
@@ -233,9 +238,12 @@ const CreatePostScreen = () => {
             <TouchableOpacity style={styles.iconButton} onPress={pickImage}>
               <MaterialIcons name="image" size={20} color="#0088ca" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconButton} onPress={pickPdf}>
+
+            {/* This is a button for file submission, remove it since I don't know why it would be needed in social app
+            All functionality remains withing the app to handle it still */}
+            {/* <TouchableOpacity style={styles.iconButton} onPress={pickPdf}>
               <MaterialIcons name="insert-drive-file" size={20} color="#0088ca" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
         </View>
       </SafeAreaView>
