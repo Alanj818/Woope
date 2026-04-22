@@ -107,7 +107,7 @@ const DateScreen = ({ route, navigation }: { route: any; navigation: any }) => {
     return 'Public Event';
   };
 
-  const getEventTimeRange = (start: string, end?: string) => {
+  const getEventTimeRange = (start: string | Date, end?: string | Date) => {
     const startDate = new Date(start);
     const endDate = end ? new Date(end) : null;
 
@@ -184,12 +184,8 @@ const DateScreen = ({ route, navigation }: { route: any; navigation: any }) => {
             end={{ x: 1, y: 1 }}
             style={styles.dateBadge}
           >
-            <Text style={styles.dateBadgeDay}>
-              {format(eventDate, 'd')}
-            </Text>
-            <Text style={styles.dateBadgeMonth}>
-              {format(eventDate, 'MMM')}
-            </Text>
+            <Text style={styles.dateBadgeDay}>{format(eventDate, 'd')}</Text>
+            <Text style={styles.dateBadgeMonth}>{format(eventDate, 'MMM')}</Text>
           </LinearGradient>
 
           <View style={styles.eventInfo}>

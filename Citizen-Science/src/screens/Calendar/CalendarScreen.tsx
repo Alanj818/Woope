@@ -79,10 +79,6 @@ const CalendarScreen = () => {
     }, [selectedValue, modalVisible])
   );
 
-  useEffect(() => {
-    createMarks();
-  }, [generalMarks, followedMarks, userMarks, createMarks]);
-
   const createMarks = useCallback(() => {
     const newMarks: Record<string, { marked: boolean; dots: { color: string }[] }> = {};
 
@@ -112,6 +108,10 @@ const CalendarScreen = () => {
 
     setMarks(newMarks);
   }, [generalMarks, followedMarks, userMarks]);
+
+  useEffect(() => {
+    createMarks();
+  }, [generalMarks, followedMarks, userMarks, createMarks]);
 
   const onDayPress = useCallback(
     (day: { dateString: string; day: number; month: number; year: number }) => {

@@ -1,6 +1,7 @@
 import React, {useState,useEffect, useContext} from 'react';
 import { View, Text, SafeAreaView, FlatList, TouchableOpacity, StyleSheet, StatusBar, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { RouteProp } from '@react-navigation/native';
 import EventCard from '../../components/EventCard';
 import CreateEvent from '../../components/CreateEvent'
 import TopNav from '../../components/TopNav';
@@ -8,7 +9,11 @@ import { MaterialIcons, Octicons } from '@expo/vector-icons';
 import { getEvents } from '../../api/event';
 import { Event } from '../../api/types';
 
-export const EventHome = ({route}) => {
+interface EventHomeProps {
+  route: RouteProp<{ params: { org_id: number } }, 'params'>;
+}
+
+export const EventHome = ({ route }: EventHomeProps) => {
     const navigation = useNavigation<any>();
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [eventData, setEventData] = useState<Event[]>([]);
@@ -36,11 +41,17 @@ export const EventHome = ({route}) => {
             <FlatList
             data={eventData}
             scrollEnabled={true}
-            keyExtractor={(item) => item.event_id} 
-            renderItem={({item}) => (
-                <EventCard 
-                    event_id = {item.event_id} 
-                    org_id = {item.org_id} 
+            keyExtractor={(item) => item.event_id.toString()}
+            renderItem={({ item }) => (
+                <EventCard
+                    event_id={item.event_id}
+                    org_id={item.org_id}
+                    name={item.name}
+                    tagline={item.tagline}
+                    text_description={item.text_description}
+                    time_begin={item.time_begin}
+                    time_end={item.time_end}
+                    image_path={item.image_path || ''} 
                 />
             )}
             ListEmptyComponent={<Text style={styles.emptyText}>No events yet</Text>}
@@ -80,6 +91,9 @@ const styles = StyleSheet.create({
         color: '#999',
         fontSize: 16,
         marginTop: 32,
+    },
+    addIcon: {
+        marginLeft: 8,
     },
 });
 export default EventHome
