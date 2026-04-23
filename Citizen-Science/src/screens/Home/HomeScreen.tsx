@@ -82,8 +82,12 @@ const HomeScreen = () => {
   const [posts, setPosts] = useState<PostWithUsername[]>([]);
   const [activeImageIndex, setActiveImageIndex] = useState<{ [postId: number]: number }>({});
   const [error, setError] = useState("");
+
+
   const [isImageViewVisible, setImageViewVisible] = useState(false);
-  const [selectedImageUri, setSelectedImageUri] = useState("");
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
   const [selectedPost, setSelectedPost] = useState<PostWithUsername | null>(
     null
   );
@@ -236,8 +240,9 @@ const HomeScreen = () => {
   //   }
   // };
 
-  const handleImagePress = (uri: string) => {
-    setSelectedImageUri(uri);
+  const handleImagePress = (urls: string[], index: number) => {
+    setSelectedImages(urls);
+    setSelectedImageIndex(index);
     setImageViewVisible(true);
   };
 
@@ -437,14 +442,19 @@ const HomeScreen = () => {
                 <View style={styles.post}>
                   <View style={styles.headerRow}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                      {/* Profile picture */}
                       <Image
                         source={{
                           uri: (item as any)?.user_avatar_url
                             ? `${process.env.EXPO_PUBLIC_API_URL}${(item as any).user_avatar_url}`
-                            : `https://ui-avatars.com/api/?name=User&background=e5e7eb&color=6b7280&size=128`
+                            : `https://t4.ftcdn.net/jpg/03/40/12/49/360_F_340124934_bz3pQTLrdFpH92ekknuaTHy8JuXgG7fi.jpg`
                         }}
                         style={styles.avatar}
-                        onError={(e) => console.log("Picture is not showing up")}
+                        onError={(e) => {
+                          e.currentTarget.setNativeProps({
+                            src: [{ uri: 'https://t4.ftcdn.net/jpg/03/40/12/49/360_F_340124934_bz3pQTLrdFpH92ekknuaTHy8JuXgG7fi.jpg' }]
+                          });
+                        }}
                       />
 
                       {/* Name and Time posted */}
@@ -478,6 +488,9 @@ const HomeScreen = () => {
                     </View>
                   )}
 
+                  {/* Displays the description of the comment */}
+                  {item.content && <Text style={styles.postText}>{item.content}</Text>}
+
                   {/* Image & Pdf renderer for comments */}
                   {item.media && item.media.length > 0 && (
                     <View style={{ marginLeft: 10, marginTop: 8, gap: 8 }}>
@@ -502,10 +515,10 @@ const HomeScreen = () => {
                                 setActiveImageIndex((prev) => ({ ...prev, [item.post_id]: index }))
                               }}
                               scrollEventThrottle={16}
-                              renderItem={({ item: m }: { item: any }) => {
+                              renderItem={({ item: m, index }: { item: any, index: number }) => {
                                 const url = `${process.env.EXPO_PUBLIC_API_URL}${m.media_url}`;
                                 return (
-                                  <TouchableOpacity onPress={() => handleImagePress(url)} activeOpacity={0.9}>
+                                  <TouchableOpacity onPress={() => handleImagePress(images.map((img: any) => `${process.env.EXPO_PUBLIC_API_URL}${img.media_url}`), index)} activeOpacity={0.9}>
                                     <Image
                                       source={{ uri: url }}
                                       style={{
@@ -547,8 +560,7 @@ const HomeScreen = () => {
                     </View>
                   )}
 
-                  {/* Displays the description of the comment */}
-                  {item.content && <Text style={styles.postText}>{item.content}</Text>}
+                 
 
 
 
@@ -608,27 +620,63 @@ const HomeScreen = () => {
           }
           showsVerticalScrollIndicator={false}
         />
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={isImageViewVisible}
-          onRequestClose={() => {
-            setImageViewVisible(!isImageViewVisible);
-          }}
-        >
-          <View style={styles.centeredView}>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setImageViewVisible(false)}
-            >
-              <Text style={styles.closeButtonText}>X</Text>
+
+        {/* Popup modal when clicking on a image  */}
+        <Modal animationType="slide" transparent={true} visible={isImageViewVisible} onRequestClose={() => setImageViewVisible(false)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center' }}>
+
+            <TouchableOpacity style={styles.closeButton} onPress={() => setImageViewVisible(false)}>
+              <Text style={styles.closeButtonText}>x</Text>
             </TouchableOpacity>
-            <Image
-              source={{ uri: selectedImageUri }}
-              style={styles.fullScreenImage}
-            />
+
+            <View style={{ position: 'relative' }}>
+              <FlatList
+                data={selectedImages}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                initialScrollIndex={selectedImageIndex}
+                getItemLayout={(_, index) => ({
+                  length: Dimensions.get('window').width,
+                  offset: Dimensions.get('window').width * index,
+                  index,
+                })}
+                keyExtractor={(_, index) => index.toString()}
+                onScroll={(e) => {
+                  const index = Math.round(e.nativeEvent.contentOffset.x / Dimensions.get('window').width);
+                  setSelectedImageIndex(index);
+                }}
+                renderItem={({ item: uri }) => (
+                  <View style={{ width: Dimensions.get('window').width, justifyContent: 'center', alignItems: 'center' }}>
+                    <Image
+                      source={{ uri }}
+                      style={{ width: Dimensions.get('window').width, height: 400, resizeMode: 'contain' }}
+                    />
+                  </View>
+                )}
+              />
+
+              {selectedImages.length > 1 && (
+                <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10, gap: 6 }}>
+                  {selectedImages.map((_, idx) => (
+                    <View
+                      key={idx}
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: 4,
+                        backgroundColor: idx === selectedImageIndex ? '#ffffff' : 'rgba(255,255,255,0.35)',
+                      }}
+                    />
+                  ))}
+                </View>
+              )}
+
+            </View>
           </View>
         </Modal>
+
+
         <Modal
           visible={commentsModalVisible}
           animationType="slide"
@@ -645,7 +693,11 @@ const HomeScreen = () => {
                     <View style={styles.headerRow}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                         <Image
-                          source={{ uri: (selectedPost as any).user_avatar_url || 'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png' }}
+                          source={{
+                            uri: (selectedPost as any).user_avatar_url
+                              ? `${process.env.EXPO_PUBLIC_API_URL}${(selectedPost as any).user_avatar_url}`
+                              : 'https://t4.ftcdn.net/jpg/03/40/12/49/360_F_340124934_bz3pQTLrdFpH92ekknuaTHy8JuXgG7fi.jpg'
+                          }}
                           style={styles.avatar}
                         />
                         <View style={styles.headerTextContainer}>
@@ -1093,13 +1145,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 60,
     right: 20,
-    backgroundColor: "red",
     padding: 10,
     borderRadius: 10,
   },
   closeButtonText: {
-    color: "#fff",
+    color: "#777575",
     fontWeight: "bold",
+    fontSize: 30,
   },
   centeredView: {
     flex: 1,
