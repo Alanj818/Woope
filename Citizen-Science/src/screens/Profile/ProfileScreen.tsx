@@ -188,12 +188,6 @@ const ProfileScreen = ({ navigation, route }: any) => {
                 <Text style={styles.sectionTitle}>Support</Text>
                 <TouchableOpacity style={styles.supportItem} onPress={() => navigation.navigate('ReportScreen')}>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Icon name="help-outline" size={20} color="#111827" style={{ marginRight: 12 }} />
-                    <Text style={styles.supportText}>Help & Support</Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.supportItem} onPress={() => navigation.navigate('ReportScreen')}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <Icon name="description" size={20} color="#111827" style={{ marginRight: 12 }} />
                     <Text style={styles.supportText}>Create a Report</Text>
                   </View>

@@ -42,7 +42,7 @@ const ProfileSearchScreen: React.FC<ProfileSearchScreenProps> = ({
 	const [searchUsers, setSearchUsers] = useState<any[]>([]);
 	const [searchPosts, setSearchPosts] = useState<any[]>([]);
 	const [renderSearch, setRenderSearch] = useState(false);
-	const [selectedFilter, setSelectedFilter] = useState<string>('All');
+	const [selectedFilter, setSelectedFilter] = useState<string>('Users');
 
 	// auth context so we can fetch posts if needed
 	const { userToken, setUserToken } = useContext(AuthContext);
@@ -61,7 +61,7 @@ const ProfileSearchScreen: React.FC<ProfileSearchScreenProps> = ({
 				setSearchUsers([]);
 				setSearchPosts([]);
 				setRenderSearch(false);
-				setSelectedFilter('All');
+				setSelectedFilter('Users');
 			}
 		}, [route.params])
 	);
@@ -142,14 +142,6 @@ const ProfileSearchScreen: React.FC<ProfileSearchScreenProps> = ({
 			} else {
 				fetchAllUsers();
 			}
-		} else if (filter === 'All') {
-			if (hasQuery) {
-				setRenderSearch(true);
-			} else {
-				setRenderSearch(false);
-				setSearchUsers([]);
-				setSearchPosts([]);
-			}
 		} else {
 			if (hasQuery) {
 				setRenderSearch(true);
@@ -182,7 +174,7 @@ const ProfileSearchScreen: React.FC<ProfileSearchScreenProps> = ({
 					style={styles.chipsRow}
 					contentContainerStyle={styles.chipsRowContent}
 				>
-					{["All", "Users", "Posts", "Organizations", "Events"].map((c) => (
+					{["Users", "Posts", "Organizations", "Events"].map((c) => (
 						<Pressable
 							key={c}
 							onPress={() => onSelectFilter(c)}
@@ -200,7 +192,7 @@ const ProfileSearchScreen: React.FC<ProfileSearchScreenProps> = ({
 			{/* Results (shown when searching) or Users list when Users filter selected */}
 		{renderSearch && (
 			<View style={styles.resultsSection}>
-				{(selectedFilter === 'All' || selectedFilter === 'Users') && searchUsers.length > 0 && (
+				{(selectedFilter === 'Users') && searchUsers.length > 0 && (
 						<FlatList
 							data={searchUsers}
 							keyExtractor={(u: any) => String(u.user_id)}
@@ -224,7 +216,7 @@ const ProfileSearchScreen: React.FC<ProfileSearchScreenProps> = ({
 						/>
 					)}
 
-					{(selectedFilter === 'All' || selectedFilter === 'Posts') && searchPosts.length > 0 && (
+					{(selectedFilter === 'Posts') && searchPosts.length > 0 && (
 						<FlatList
 							data={searchPosts}
 							keyExtractor={(p: any) => String(p.post_id)}
