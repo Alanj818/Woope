@@ -116,8 +116,17 @@ const Comments: React.FC<CommentsProps> = ({
     return commentsState.map((comment) => (
       <View key={comment.comment_id} style={styles.commentRow}>
         <Image
-          source={require('../../assets/defaultprofilepic.png')}
+          source={{
+            uri: (comment as any).user_avatar_url
+              ? `${process.env.EXPO_PUBLIC_API_URL}${(comment as any).user_avatar_url}`
+              : `https://t4.ftcdn.net/jpg/03/40/12/49/360_F_340124934_bz3pQTLrdFpH92ekknuaTHy8JuXgG7fi.jpg`
+          }}
           style={styles.avatarCircle}
+          onError={(e) => {
+            e.currentTarget.setNativeProps({
+              src: [{ uri: 'https://t4.ftcdn.net/jpg/03/40/12/49/360_F_340124934_bz3pQTLrdFpH92ekknuaTHy8JuXgG7fi.jpg' }]
+            });
+          }}
         />
         <View style={styles.commentBody}>
           <View style={styles.commentHeaderRow}>
@@ -194,8 +203,8 @@ const Comments: React.FC<CommentsProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-  flex: 1,
-  padding: 6,
+    flex: 1,
+    padding: 6,
   },
   comment: {
     backgroundColor: "#f0f0f0",
@@ -223,13 +232,13 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   author: {
-  fontWeight: '600',
-  fontSize: 16,
+    fontWeight: '600',
+    fontSize: 16,
   },
   text: {
-  fontSize: 16,
-  marginBottom: 5,
-  color: '#111',
+    fontSize: 16,
+    marginBottom: 5,
+    color: '#111',
   },
   bottomRow: {
     marginTop: 6,
@@ -267,9 +276,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   commentRow: {
-  flexDirection: 'row',
-  alignItems: 'flex-start',
-  marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   avatarCircle: {
     width: 44,

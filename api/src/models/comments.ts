@@ -51,7 +51,8 @@ export const getComments = async (post_id: number): Promise<Comment[]> => {
 		 CASE 
 		 	WHEN comments.org_id IS NOT NULL THEN o.name
 			ELSE pi.first_name || ' ' || pi.last_name
-		 END AS username
+		 END AS username,
+         pi.image_url AS user_avatar_url
          FROM comments
          JOIN users u ON u.user_id = comments.user_id
          JOIN profile_information pi ON pi.user_id = u.user_id

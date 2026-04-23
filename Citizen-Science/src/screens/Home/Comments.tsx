@@ -1,3 +1,6 @@
+//Handles functionality of comments
+
+
 import React, { useState } from "react";
 import {
   View,

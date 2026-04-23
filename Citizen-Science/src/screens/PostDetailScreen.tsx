@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, Image, StyleSheet, SafeAreaView, TextInput, TouchableOpacity, Keyboard } from 'react-native';
+import { View, Text, Image, StyleSheet, SafeAreaView, TextInput, TouchableOpacity, Keyboard, FlatList, Dimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import TopNav from '../components/TopNav';
@@ -50,7 +50,7 @@ const PostDetailScreen: React.FC = () => {
   }, [route.params]);
 
   // hide parent tab bar while this screen is focused, restore when unfocused
-    useFocusEffect(
+  useFocusEffect(
     React.useCallback(() => {
       const parent = navigation.getParent && navigation.getParent();
       try {
@@ -60,8 +60,8 @@ const PostDetailScreen: React.FC = () => {
       }
       return () => {
         try {
-      // restore explicit tab bar style so size/padding remain consistent
-      parent?.setOptions && parent.setOptions({ tabBarStyle: TAB_BAR_STYLE });
+          // restore explicit tab bar style so size/padding remain consistent
+          parent?.setOptions && parent.setOptions({ tabBarStyle: TAB_BAR_STYLE });
         } catch (e) {
           // ignore
         }
@@ -153,10 +153,24 @@ const PostDetailScreen: React.FC = () => {
         <View style={styles.content}>
           <View style={styles.post}>
             <View style={styles.headerRow}>
+
+              {/* Profile image */}
               <Image
-                source={{ uri: post.user_avatar_url || 'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png' }}
+                source={{
+                  uri: post?.user_avatar_url
+                    ? `${process.env.EXPO_PUBLIC_API_URL}${post.user_avatar_url}`
+                    : `https://t4.ftcdn.net/jpg/03/40/12/49/360_F_340124934_bz3pQTLrdFpH92ekknuaTHy8JuXgG7fi.jpg`
+                }}
                 style={styles.avatar}
+                onError={(e) => {
+                  e.currentTarget.setNativeProps({
+                    src: [{ uri: 'https://t4.ftcdn.net/jpg/03/40/12/49/360_F_340124934_bz3pQTLrdFpH92ekknuaTHy8JuXgG7fi.jpg' }]
+                  });
+                }}
               />
+
+
+
               <View style={styles.headerTextContainer}>
                 <Text style={styles.userName}>{post.userName}</Text>
                 <Text style={styles.timestamp}>{formatTimeAgo(post.created_at)}</Text>
@@ -184,6 +198,49 @@ const PostDetailScreen: React.FC = () => {
 
             {post.content ? <Text style={styles.postText}>{post.content}</Text> : null}
 
+            {post.media && post.media.length > 0 && (() => {
+              const images = post.media.filter((m: any) => m.media_type === 'Image');
+              if (images.length === 0) return null;
+              const imageWidth = Dimensions.get('window').width - 32;
+              return (
+                <View style={{ marginTop: 10, position: 'relative' }}>
+                  <FlatList
+                    data={images}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    style={{ width: imageWidth }}
+                    keyExtractor={(m: any) => m.media_id.toString()}
+                    renderItem={({ item: m }: { item: any }) => {
+                      const url = `${process.env.EXPO_PUBLIC_API_URL}${m.media_url}`;
+                      return (
+                        <Image
+                          source={{ uri: url }}
+                          style={{
+                            width: imageWidth,
+                            height: 250,
+                            borderRadius: 12,
+                            backgroundColor: '#e5e7eb',
+                          }}
+                          resizeMode="cover"
+                        />
+                      );
+                    }}
+                  />
+                  {images.length > 1 && (
+                    <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 6, gap: 4 }}>
+                      {images.map((_: any, idx: number) => (
+                        <View
+                          key={idx}
+                          style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#D1D5DB' }}
+                        />
+                      ))}
+                    </View>
+                  )}
+                </View>
+              );
+            })()}
+
             {visibleDropdown === post.post_id.toString() && (
               <TouchableOpacity
                 activeOpacity={1}
@@ -197,11 +254,11 @@ const PostDetailScreen: React.FC = () => {
                 postId={post.post_id}
                 user_id={currentUserId}
                 initialLikesCount={post.likes_count}
-                  likedPost={post.user_liked}
-                  onToggle={(id, liked, likesCount) => {
-                    // update local post state so UI reflects change immediately
-                    setPost((p: any) => ({ ...(p || {}), user_liked: liked, likes_count: likesCount }));
-                  }}
+                likedPost={post.user_liked}
+                onToggle={(id, liked, likesCount) => {
+                  // update local post state so UI reflects change immediately
+                  setPost((p: any) => ({ ...(p || {}), user_liked: liked, likes_count: likesCount }));
+                }}
               />
             </View>
           </View>
@@ -217,10 +274,10 @@ const PostDetailScreen: React.FC = () => {
               postId={post.post_id}
               userId={currentUserId}
               orgId={NaN}
-              onAddComment={() => {}}
-              onDeleteComment={() => {}}
-              onLikeComment={() => {}}
-              onUnlikeComment={() => {}}
+              onAddComment={() => { }}
+              onDeleteComment={() => { }}
+              onLikeComment={() => { }}
+              onUnlikeComment={() => { }}
               showInput={false}
             />
           </View>
@@ -270,9 +327,9 @@ const styles = StyleSheet.create({
   },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   content: { padding: 16, flex: 1 },
-  headerRow: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 8,
     justifyContent: 'space-between',
   },
