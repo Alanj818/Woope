@@ -83,7 +83,11 @@ export const MapScreen = () => {
   const [filterTag, setFilterTag] = useState('All');
   const [showHistory, setShowHistory] = useState(false);
 
+  const [name, setName] = useState(false);
+
   const isMarkerPressedRef = useRef(false);
+
+  
 
   const [formData, setFormData] = useState({
     name: '',
@@ -94,16 +98,26 @@ export const MapScreen = () => {
     location: null as Location | null,
   });
 
+  const isFormReady = !!formData.name && !!formData.date;
+
   const [tagItems, setTagItems] = useState([
     { label: 'General', value: 'General' },
-    { label: 'Weather', value: 'Weather' },
+    { label: 'Environment ', value: 'Weather' },
     { label: 'Event', value: 'Event' },
     { label: 'Workshop', value: 'Workshop' },
     { label: 'Hazard', value: 'Hazard' },
     { label: 'Mutual Aid', value: 'Mutual Aid' },
-    { label: 'Nasa', value: 'Nasa' },
-    { label: 'TTN', value: 'TTN' },
   ]);
+
+  const tagStyles: Record<string, { backgroundColor: string; textColor: string }> = {
+    General: { backgroundColor: '#E8F7EC', textColor: '#218A4A' },
+    Weather: { backgroundColor: '#E7F0FF', textColor: '#2F6FEB' },
+    Event: { backgroundColor: '#EDE2FF', textColor: '#8A3FFC' },
+    Workshop: { backgroundColor: '#FFF0DC', textColor: '#B86A00' },
+    Hazard: { backgroundColor: '#FCE3E3', textColor: '#D93025' },
+    'Mutual Aid': { backgroundColor: '#E6F8F4', textColor: '#117A65' },
+   
+  };
 
   const fetchPins = async () => {
     try {
@@ -620,174 +634,180 @@ export const MapScreen = () => {
         </MapView>
       )}
 
+      
       {/* Modal for Adding a New Pin */}
       <Modal visible={modalVisible} animationType="slide" transparent={true}>
-				<TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-					<View style={styles.modalContainer}>
-						<Text style={styles.modalTitle}>
-							{isEditMode ? 'Update Pin' : 'Add a New Pin'}
-						</Text>
-						<TextInput
-							style={styles.input}
-							placeholder="Name"
-							value={formData.name}
-							onChangeText={(text) => setFormData({ ...formData, name: text })}
-						/>
-						{/* Simple Date Picker */}
-						<TouchableOpacity
-							style={styles.datePicker}
-							onPress={() => setShowDatePicker(true)}
-						>
-							<Text style={styles.datePickerText}>
-								{formData.date ? formData.date : 'Pick a Date'}
-							</Text>
-						</TouchableOpacity>
-						{showDatePicker && (
-							<DateTimePicker
-								value={new Date()}
-								mode="date"
-								display="default"
-								onChange={(event, selectedDate) => {
-									setShowDatePicker(false); // Close the picker
-									if (selectedDate) {
-										setFormData({
-											...formData,
-											date: selectedDate.toISOString().split('T')[0], // Format as YYYY-MM-DD
-										});
-									}
-								}}
-							/>
-						)}
-						<TextInput
-							style={[styles.input, styles.textArea]}
-							placeholder="Description"
-							multiline
-							numberOfLines={4}
-							value={formData.description}
-							onChangeText={(text) => setFormData({ ...formData, description: text })}
-						/>
-						{/* Tag Select */}
-						<View
-							style={{
-								width: '80%',
-								alignSelf: 'center',
-								backgroundColor: 'rgba(240,240,240,0.95)',
-								padding: 10,
-								borderRadius: 10,
-								marginBottom: 20,
-							}}
-						>
-							<Text style={{ marginBottom: 5, fontWeight: 'bold' }}>Tag</Text>
-							<View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-								{tagItems.map((item) => (
-									<TouchableOpacity
-										key={item.value}
-										onPress={() => setFormData({ ...formData, tag: item.value })}
-										style={{
-											backgroundColor: formData.tag === item.value ? '#007AFF' : '#e0e0e0',
-											paddingVertical: 6,
-											paddingHorizontal: 12,
-											borderRadius: 5,
-											marginRight: 8,
-											marginBottom: 8,
-										}}
-									>
-										<Text
-											style={{
-												color: formData.tag === item.value ? 'white' : 'black',
-											}}
-										>
-											{item.label}
-										</Text>
-									</TouchableOpacity>
-								))}
-							</View>
-						</View>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalOverlay}>
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+            <View style={styles.sheetWrapper}>
+              <View style={styles.sheetHandle} />
+              <View style={styles.modalHeaderRow}>
+                <View style={styles.modalIconBadge}>
+                  <Image style={{ width: 50, height: 50 }} source={require('../../../assets/pinLogo.png')} />
+                </View>
+                <Text style={styles.sheetTitle}>{isEditMode ? 'Update Pin' : 'Add New Pin'}</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setFormData({
+                      name: '',
+                      date: '',
+                      description: '',
+                      tag: 'General',
+                      image: null,
+                      location: null,
+                    });
+                    setModalVisible(false);
+                  }}
+                  style={styles.headerCloseButton}
+                >
+                  <Text style={styles.headerCloseText}>✕</Text>
+                </TouchableOpacity>
+              </View>
 
-						{/* Image Picker */}
-						<View
-							style={{
-								width: '80%',
-								alignSelf: 'center',
-								backgroundColor: 'rgba(240,240,240,0.95)',
-								padding: 10,
-								borderRadius: 10,
-								marginBottom: 20,
-							}}
-						>
-							<Text style={{ marginBottom: 10, fontWeight: 'bold' }}>Media</Text>
+              <ScrollView contentContainerStyle={styles.sheetContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                <Text style={styles.fieldLabel}>Name</Text>
+                <TextInput
+                  style={styles.sheetInput}
+                  placeholder="e.g., Community Garden, Art Installation..."
+                  placeholderTextColor="#9CA3AF"
+                  value={formData.name}
+                  onChangeText={(text) => setFormData({ ...formData, name: text })}
+                />
 
-							<View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-								<TouchableOpacity
-									style={{
-										backgroundColor: '#ccc',
-										padding: 10,
-										borderRadius: 5,
-										flex: 1,
-										marginRight: 5,
-									}}
-									onPress={handlePickImage}
-								>
-									<Text style={{ textAlign: 'center', color: '#000' }}>
-										{formData.image ? 'Change Image' : 'Add Image'}
-									</Text>
-								</TouchableOpacity>
+                <Text style={styles.fieldLabel}>Tag</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.tagRow}
+                >
+                  {tagItems.map((item) => {
+                    const palette = tagStyles[item.value] || {
+                      backgroundColor: '#F1F3F5',
+                      textColor: '#374151',
+                    };
+                    const selected = formData.tag === item.value;
 
-								<TouchableOpacity
-									style={{
-										backgroundColor: '#007AFF',
-										padding: 10,
-										borderRadius: 5,
-										flex: 1,
-										marginLeft: 5,
-									}}
-									onPress={handleOpenCamera}
-								>
-									<Text style={{ textAlign: 'center', color: '#fff', fontWeight: 'bold' }}>
-										Open Camera
-									</Text>
-								</TouchableOpacity>
-							</View>
+                    return (
+                      <TouchableOpacity
+                        key={item.value}
+                        onPress={() => setFormData({ ...formData, tag: item.value })}
+                        style={[
+                          styles.tagChip,
+                          {
+                            backgroundColor: palette.backgroundColor,
+                            borderColor: selected ? palette.textColor : 'transparent',
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.tagChipText,
+                            { color: palette.textColor, fontWeight: selected ? '700' : '500' },
+                          ]}
+                        >
+                          {item.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
 
-							{formData.image && (
-								<Image
-									source={{ uri: formData.image }}
-									style={{ width: 100, height: 100, marginTop: 10, alignSelf: 'center', borderRadius: 5 }}
-								/>
-							)}
-						</View>
-						{/* Action Buttons */}
-						<View style={styles.buttonContainer}>
+                <Text style={styles.fieldLabel}>Date</Text>
+                <TouchableOpacity
+                  style={styles.sheetInputButton}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Image style={{ width: 30, height: 30 }} source={require('../../../assets/CalendarIcon.png')} />
+                  <Text style={[styles.sheetInputButtonText, !formData.date && styles.placeholderText]}>
+                    {formData.date || 'Select a date'}
+                  </Text>
+                </TouchableOpacity>
 
-							<TouchableOpacity
-								style={styles.cancelButton}
-								onPress={() => {
-									setFormData({
-										name: '',
-										date: '',
-										description: '',
-										tag: 'General',
-										image: null,
-										location: null
-									}); // Clear form data
-									setModalVisible(false); // Close the modal
-								}}
-							>
-								<Text style={styles.buttonText}>Cancel</Text>
-							</TouchableOpacity>
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={formData.date ? new Date(formData.date) : new Date()}
+                    mode="date"
+                    display="default"
+                    onChange={(event, selectedDate) => {
+                      setShowDatePicker(false);
+                      if (selectedDate) {
+                        setFormData({
+                          ...formData,
+                          date: selectedDate.toISOString().split('T')[0],
+                        });
+                      }
+                    }}
+                  />
+                )}
 
+                <Text style={styles.fieldLabel}>Description</Text>
+                <TextInput
+                  style={[styles.sheetInput, styles.sheetTextArea]}
+                  placeholder="Add details about this location..."
+                  placeholderTextColor="#9CA3AF"
+                  multiline
+                  numberOfLines={5}
+                  value={formData.description}
+                  onChangeText={(text) => setFormData({ ...formData, description: text })}
+                />
 
-							<TouchableOpacity
-								style={styles.submitButton}
-								onPress={isEditMode ? handlePinUpdateFormSubmit : handleFormSubmit}
-							>
-								<Text style={styles.buttonText}>{isEditMode ? 'Update' : 'Submit'}</Text>
-							</TouchableOpacity>
+                <TouchableOpacity style={styles.photoButton} onPress={handlePickImage}>
+                  <Image style={{ width: 20, height: 20 }} source={require('../../../assets/pictureIcon.png')} />
+                  <Text style={styles.photoButtonText}>
+                    {formData.image ? 'Change Photo' : 'Add Photo'}
+                  </Text>
+                </TouchableOpacity>
 
-						</View>
-					</View>
-				</TouchableWithoutFeedback>
-			</Modal>
+                <TouchableOpacity style={styles.cameraGhostButton} onPress={handleOpenCamera}>
+                  <Text style={styles.cameraGhostButtonText}>Open Camera</Text>
+                </TouchableOpacity>
+
+                {formData.image && (
+                  <Image source={{ uri: formData.image }} style={styles.selectedImagePreview} />
+                )}
+              </ScrollView>
+
+              <View style={styles.sheetFooter}>
+                <TouchableOpacity
+                  style={styles.footerSecondaryButton}
+                  onPress={() => {
+                    setFormData({
+                      name: '',
+                      date: '',
+                      description: '',
+                      tag: 'General',
+                      image: null,
+                      location: null,
+                    });
+                    setModalVisible(false);
+                  }}
+                  >
+                  <Text style={styles.footerSecondaryButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                
+                 
+                <TouchableOpacity
+                  style={[
+                    styles.footerPrimaryButton,
+                    isFormReady ? { backgroundColor: '#1D4ED8' } : null,
+                  ]}
+                  onPress={isEditMode ? handlePinUpdateFormSubmit : handleFormSubmit}
+                >
+                  <Text style={styles.footerPrimaryButtonIcon}>➤</Text>
+                  <Text
+                    style={[
+                      styles.footerPrimaryButtonText,
+                      formData.name ? { color: '#FFFFFF' } : null,
+                    ]}
+                  >
+                    {isEditMode ? 'Update' : 'Submit'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
+      </Modal>
 
 
       <Modal visible={detailsVisible} animationType="slide" transparent={true}>
@@ -914,69 +934,204 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
   },
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(15, 23, 42, 0.22)',
+  },
+  sheetWrapper: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingTop: 12,
+    paddingHorizontal: 18,
+    paddingBottom: 18,
+    maxHeight: '92%',
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    width: 48,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: '#D1D5DB',
+    marginBottom: 14,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    marginBottom: 18,
   },
-  modalTitle: {
+  modalIconBadge: {
+    width: 40,
+    height: 40,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  modalIconText: {
+    color: '#1D4ED8',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  sheetTitle: {
+    flex: 1,
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  headerCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerCloseText: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 20,
+    color: '#6B7280',
+    fontWeight: '500',
   },
-  input: {
-    width: '80%',
-    backgroundColor: 'white',
-    padding: 10,
+  sheetContent: {
+    paddingBottom: 18,
+  },
+  fieldLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
     marginBottom: 10,
-    borderRadius: 5,
   },
-  textArea: {
-    height: 100,
+  sheetInput: {
+    width: '100%',
+    minHeight: 52,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#111827',
+    marginBottom: 18,
+  },
+  sheetTextArea: {
+    minHeight: 112,
     textAlignVertical: 'top',
   },
-  dropdown: {
-    width: '80%',
-    marginBottom: 10,
-    alignSelf: 'center'
+  tagRow: {
+    paddingBottom: 18,
+    paddingRight: 18,
   },
-  imagePicker: {
-    backgroundColor: '#ccc',
-    padding: 10,
-    borderRadius: 5,
-    marginBottom: 10,
+  tagChip: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    marginRight: 10,
+    borderWidth: 1.5,
   },
-  imagePickerText: {
-    color: '#000',
-    textAlign: 'center',
+  tagChipText: {
+    fontSize: 16,
   },
-  previewImage: {
-    width: 100,
-    height: 100,
-    marginTop: 10,
-    borderRadius: 10,
-  },
-  buttonContainer: {
+  sheetInputButton: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    width: '80%',
-    marginTop: 10,
+    alignItems: 'center',
+    minHeight: 52,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    marginBottom: 18,
+    backgroundColor: '#FFFFFF',
   },
-  cancelButton: {
-    backgroundColor: '#d9534f',
-    padding: 10,
-    borderRadius: 5,
+  inputLeadingIcon: {
+    fontSize: 18,
+    marginRight: 10,
   },
-  submitButton: {
-    backgroundColor: '#5cb85c',
-    padding: 10,
-    borderRadius: 5,
+  sheetInputButtonText: {
+    fontSize: 16,
+    color: '#111827',
   },
-  buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
+  placeholderText: {
+    color: '#9CA3AF',
+  },
+  photoButton: {
+    minHeight: 52,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    marginBottom: 12,
+  },
+  photoButtonIcon: {
+    fontSize: 16,
+    marginRight: 10,
+  },
+  photoButtonText: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: '#4B5563',
+  },
+  cameraGhostButton: {
+    minHeight: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3F4F6',
+    marginBottom: 14,
+  },
+  cameraGhostButtonText: {
+    color: '#374151',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  selectedImagePreview: {
+    width: '100%',
+    height: 170,
+    borderRadius: 18,
+    resizeMode: 'cover',
+    marginTop: 4,
+  },
+  sheetFooter: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  footerSecondaryButton: {
+    flex: 1,
+    minHeight: 56,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footerSecondaryButtonText: {
+    color: '#374151',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  footerPrimaryButton: {
+    flex: 1,
+    minHeight: 56,
+    borderRadius: 16,
+    backgroundColor: '#E5E7EB',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footerPrimaryButtonIcon: {
+    color: '#9CA3AF',
+    fontSize: 14,
+    marginRight: 8,
+  },
+  footerPrimaryButtonText: {
+    color: '#9CA3AF',
+    fontSize: 17,
+    fontWeight: '600',
   },
   detailsContainer: {
     position: 'absolute',

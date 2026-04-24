@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon --legacy-watch src/server.ts"
+    "dev": "nodemon --legacy-watch src/server.ts",
+    "migrate": "db-migrate up",
+    "migrate:down": "db-migrate down",
+    "migrate:create": "db-migrate create"
   },
   "keywords": [],
   "author": "",
