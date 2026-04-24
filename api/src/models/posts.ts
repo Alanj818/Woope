@@ -23,12 +23,15 @@ export const getPostWithMedia = async (currentUserId: number): Promise<PostWithM
             'created_at', post_media.created_at,
             'updated_at', post_media.updated_at
           )
-        ) FILTER (WHERE post_media.media_id IS NOT NULL) AS media
+        ) FILTER (WHERE post_media.media_id IS NOT NULL) AS media,
+    tags.name AS tag
     FROM posts
     JOIN profile_information ON posts.user_id = profile_information.user_id
     LEFT JOIN post_likes ON posts.post_id = post_likes.post_id
     LEFT JOIN post_media ON posts.post_id = post_media.post_id
-    GROUP BY posts.post_id, profile_information.first_name, profile_information.last_name, profile_information.image_url
+    LEFT JOIN post_tags ON posts.post_id = post_tags.post_id
+    LEFT JOIN tags ON post_tags.tag_id = tags.tag_id
+    GROUP BY posts.post_id, profile_information.first_name, profile_information.last_name, profile_information.image_url, tags.name
     ORDER BY posts.created_at DESC
 `;
   const response = await pool.query(query, [currentUserId]);
@@ -38,7 +41,8 @@ export const getPostWithMedia = async (currentUserId: number): Promise<PostWithM
     likes_count: parseInt(row.likes_count),
     user_liked: Boolean(row.user_liked),
     user_avatar_url: row.image_url,
-    media: row.media // Includes media array in the returned objects
+    media: row.media,
+    tag: row.tag || null
   }));
 };
 
@@ -252,3 +256,19 @@ export const getPostsByOrgId = async (org_id: number): Promise<Post[] | undefine
   }
 
 }
+
+
+export const getAllTags = async (): Promise<{ tag_id: number; name: string }[]> => {
+  const response = await pool.query('SELECT * FROM tags ORDER BY name ASC');
+  return response.rows;
+};
+
+export const setPostTag = async (post_id: number, tag_id: number | null): Promise<void> => {
+  await pool.query('DELETE FROM post_tags WHERE post_id = $1', [post_id]);
+  if (tag_id !== null) {
+    await pool.query(
+      'INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2)',
+      [post_id, tag_id]
+    );
+  }
+};
