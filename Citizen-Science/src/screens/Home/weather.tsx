@@ -297,7 +297,7 @@ const Weather: React.FC = () => {
           setLocationName(label);
         }
 
-        const sensor = await getPurpleAirDevice(4);
+        const sensor = await getPurpleAirDevice(2);
         setSensorData(sensor);
       } catch (err) {
         console.error(err);

@@ -2,182 +2,240 @@
     Modal component to edit the resource info from the resource card
     Takes the resource name, whether its visible, and a function when it closes
 */
-import React, {useState} from "react";
-import { Modal, View, TextInput, Button, StyleSheet, SafeAreaView, Text, TouchableOpacity} from "react-native";
+import React, { useState, useEffect } from "react";
+import {
+    Modal, View, TextInput, StyleSheet, SafeAreaView,
+    Text, TouchableOpacity, ScrollView
+} from "react-native";
 import { MaterialIcons } from '@expo/vector-icons';
-import { updateResource, updateResourcePhoto} from "../api/resources";
-import * as ImagePicker from "expo-image-picker";
-import { submitForm } from "../api/upload";
-interface ResourceInfo {
-    tagline: string;
-    description: string;
-}
-interface ModalProps {
-    resource_id: number,
-    isVisible: boolean,
-    onClose: () => void,
-}
-interface ImageInfo {
-    name: string;
-    uri: string;
-}
-const UpdateResourceModal: React.FC<ModalProps> = ({resource_id, isVisible, onClose}) => {
-    const [newInfo, setNewInfo] = useState<ResourceInfo>({
-            tagline: "",
-            description: "",
-        });
-    const [imageInfo, setImageInfo] = useState<ImageInfo>({
-            name: "",
-            uri: "",
-            });
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { updateResource } from "../api/resources";
 
-    const handleInputChange = (field: keyof ResourceInfo, value: string) => {
-        setNewInfo(prevState => ({ ...prevState, [field]: value }));
+interface ModalProps {
+    resource_id: number;
+    isVisible: boolean;
+    onClose: () => void;
+    currentName?: string;
+    currentTagline?: string;
+    currentDescription?: string;
+}
+
+const STRINGS = {
+    title: 'Edit Resource',
+    name: 'Resource Name',
+    tagline: 'Tagline',
+    description: 'Description',
+    cancel: 'Cancel',
+    save: 'Save',
+};
+
+const UpdateResourceModal: React.FC<ModalProps> = ({
+    resource_id,
+    isVisible,
+    onClose,
+    currentName = '',
+    currentTagline = '',
+    currentDescription = '',
+}) => {
+    const insets = useSafeAreaInsets();
+    const [editName, setEditName] = useState(currentName);
+    const [editTagline, setEditTagline] = useState(currentTagline);
+    const [editDescription, setEditDescription] = useState(currentDescription);
+
+    // Keep fields in sync if parent passes updated values
+    useEffect(() => {
+        setEditName(currentName);
+        setEditTagline(currentTagline);
+        setEditDescription(currentDescription);
+    }, [currentName, currentTagline, currentDescription, isVisible]);
+
+    // updates resource info in database
+    const handleSave = async () => {
+        try {
+            await updateResource(resource_id, editTagline, editDescription);
+            onClose();
+        } catch (error) {
+            console.log('Resource Info Update Failed', error);
+        }
     };
-    
-    // allows selection of image, and retrieval of its data
-    const selectImage = async () => {
-            try {
-                // request permissions to image library on iphone
-                await ImagePicker.requestMediaLibraryPermissionsAsync();
-                // only allow images
-                let result = await ImagePicker.launchImageLibraryAsync({
-                    mediaTypes: ["images"],
-                    allowsEditing: true,
-                    aspect: [18,6],
-                    quality: 1,
-                });
-                // if not cancelled
-                if (!result.canceled) {
-                    //retrieve selected image
-                    const file = result.assets[0];
-                    // set image info to append to form data once submit is pressed
-                    setImageInfo({
-                        name: Date.now() + '--' + file.fileName,
-                        uri: file.uri,
-                    });
-                }else {
-                console.log("Document selection cancelled.");
-                }
-            } catch (error) {
-                console.log('Photo upload failed', error);
-            }
-        }
-         // uploads photo if one has been selected and places filename in database
-        const uploadPhoto = async () => {
-                // upload to server
-                const formData = new FormData();
-                formData.append("file", imageInfo as any, imageInfo.name);
-                submitForm("file", formData, (msg) => console.log(msg));
-                // upload filename to database
-                try {
-                    const response = await updateResourcePhoto(resource_id, imageInfo.name.toString());
-                } catch (error) {
-                    console.log('Error', error);
-                }
-            
-        }
-         // updates organization info in database if new info is entered
-        const updateInfo = async () => {
-                try {
-                    // update new info to database
-                    const response = await updateResource(resource_id, newInfo.tagline, newInfo.description);
-                }catch(error) {
-                    console.log('Resource Info Update Failed', error);
-                }
-        }
-        const handleSave = () => {
-            if(imageInfo.name){
-                uploadPhoto();
-                setImageInfo({
-                    name: '',
-                    uri: '',
-                });
-            }
-            if(newInfo.description || newInfo.tagline){
-                updateInfo(); 
-                setNewInfo({
-                    tagline: '',
-                    description: '',
-                });
-            }  
-        }
-    return(
-        <SafeAreaView style = {styles.safeview}>
-            <Modal 
-            transparent = {true}
+
+    return (
+        <Modal
+            transparent={true}
             animationType="fade"
-            visible = {isVisible} 
+            visible={isVisible}
             onRequestClose={onClose}
-            > 
-            <View style = {styles.container}>
-                <View style = {styles.textContainer}>
-                    <Text>Enter A New Tagline</Text>
-                    <TextInput 
-                    onChangeText={(value) => handleInputChange("tagline", value)}
-                    maxLength={50}
-                    style = {styles.textbox}
-                    ></TextInput>
-                    <Text>Enter A New Description</Text>
-                    <TextInput 
-                    onChangeText={(value) => handleInputChange("description", value)}
-                    maxLength={500}
-                    multiline={true}
-                    scrollEnabled={true}
-                    style = {styles.textbox}
-                    ></TextInput>
-                    <View>
-                        <Text>Change the banner image</Text>
-                        <TouchableOpacity onPress={() => selectImage()}>
-                            <MaterialIcons name="add-photo-alternate" size={30} color={"lightblue"}/>
-                        </TouchableOpacity>
+        >
+            <View style={styles.modalContainer}>
+                <LinearGradient
+                    colors={['rgba(0,132,209,1)', 'rgba(0,146,184,1)']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.header, { paddingTop: insets.top, height: insets.top + 56 }]}
+                >
+                    <View style={styles.headerInner}>
+                        <View style={styles.headerLeft}>
+                            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                                <MaterialIcons name="close" size={24} color="#fff" />
+                            </TouchableOpacity>
+                            <View style={styles.headingWrapper}>
+                                <Text style={styles.titleText}>{STRINGS.title}</Text>
+                            </View>
+                        </View>
                     </View>
-                </View>
-                <View style = {styles.buttonContainer}>
-                    <Button 
-                    title="Close"
-                    onPress= {onClose}
-                    />
-                    <Button 
-                    title="Save"
-                    onPress = {() => {
-                        handleSave();
-                        onClose();
-                    }}/>
-                </View>
+                </LinearGradient>
+
+                <SafeAreaView style={styles.contentSafeArea}>
+                    <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>{STRINGS.name}</Text>
+                            <TextInput
+                                value={editName}
+                                onChangeText={setEditName}
+                                placeholder="Resource name"
+                                maxLength={100}
+                                style={styles.textbox}
+                            />
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>{STRINGS.tagline}</Text>
+                            <TextInput
+                                value={editTagline}
+                                onChangeText={setEditTagline}
+                                placeholder="Enter a tagline"
+                                maxLength={50}
+                                style={styles.textbox}
+                            />
+                        </View>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>{STRINGS.description}</Text>
+                            <TextInput
+                                value={editDescription}
+                                onChangeText={setEditDescription}
+                                placeholder="Enter a description"
+                                maxLength={500}
+                                multiline
+                                style={[styles.textbox, { minHeight: 100 }]}
+                            />
+                        </View>
+
+                        <View style={styles.buttonContainer}>
+                            <TouchableOpacity
+                                style={[styles.button, styles.cancelButton]}
+                                onPress={onClose}
+                            >
+                                <Text style={styles.cancelButtonText}>{STRINGS.cancel}</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.button, styles.saveButton]}
+                                onPress={handleSave}
+                            >
+                                <Text style={styles.saveButtonText}>{STRINGS.save}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </ScrollView>
+                </SafeAreaView>
             </View>
-            </Modal>
-        </SafeAreaView>
+        </Modal>
     );
 };
+
 const styles = StyleSheet.create({
-    safeview: {
+    modalContainer: {
+        flex: 1,
+        backgroundColor: '#f5f5f5',
+    },
+    contentSafeArea: {
+        flex: 1,
+        backgroundColor: '#f5f5f5',
+    },
+    header: {
+        alignItems: 'flex-start',
+        justifyContent: 'flex-end',
+        paddingBottom: 8,
+    },
+    headerInner: {
+        width: '100%',
+        flexDirection: 'row',
+        alignItems: 'center',
+        height: 44,
+        paddingHorizontal: 16,
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    closeBtn: {
+        marginRight: 8,
+        padding: 6,
+    },
+    headingWrapper: {
+        height: 44,
+        justifyContent: 'center',
+    },
+    titleText: {
+        color: '#ffffff',
+        fontSize: 20,
+        fontWeight: '400',
+        lineHeight: 28,
+    },
+    scroll: {
         flex: 1,
     },
-    container: {
-        flex: 1,
-        backgroundColor: "white",
-        alignItems: "center",
-        justifyContent: "center"
+    scrollContent: {
+        padding: 16,
+        gap: 16,
     },
-    textContainer: {
-        flexDirection: "column",
-        gap: 10,
+    inputGroup: {
+        gap: 8,
+    },
+    label: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#333',
+    },
+    textbox: {
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#0084D1',
+        backgroundColor: 'white',
+        fontSize: 14,
+        color: '#333',
     },
     buttonContainer: {
-        gap: 30,
-        flexDirection: "row",
-        backgroundColor: "white",
-        alignItems: "center",
-        justifyContent: "center"
+        gap: 12,
+        flexDirection: 'row',
+        marginTop: 8,
+        marginBottom: 32,
     },
-    textbox:{
-        padding: 10,
-        width: 300,
-        borderRadius: 5,
-        borderWidth: 2,
-        borderColor: "lightblue",
-        backgroundColor: "white"
+    button: {
+        flex: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-})
+    cancelButton: {
+        backgroundColor: '#e0e0e0',
+    },
+    cancelButtonText: {
+        color: '#333',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    saveButton: {
+        backgroundColor: '#0084D1',
+    },
+    saveButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+});
+
 export default UpdateResourceModal;

@@ -41,6 +41,14 @@ interface EventItem {
   source: 'public' | 'followed' | 'private';
 }
 
+// Fix timezone: get local date string without UTC conversion
+const toLocalDateString = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const CalendarScreen = () => {
   const navigation = useNavigation<any>();
   const { userToken } = useContext(AuthContext);
@@ -82,8 +90,14 @@ const CalendarScreen = () => {
   const createMarks = useCallback(() => {
     const newMarks: Record<string, { marked: boolean; dots: { color: string }[] }> = {};
 
+    // Fix: use local date parsing to avoid timezone shift on calendar dots
+    const parseLocalDay = (timeBegin: string) => {
+      const d = new Date(timeBegin);
+      return toLocalDateString(d);
+    };
+
     generalMarks.forEach(({ time_begin }) => {
-      const day = new Date(time_begin).toLocaleDateString('sv-SE');
+      const day = parseLocalDay(time_begin);
       if (!newMarks[day]) newMarks[day] = { marked: true, dots: [] };
       if (!newMarks[day].dots.some((dot) => dot.color === 'blue')) {
         newMarks[day].dots.push({ color: 'blue' });
@@ -91,7 +105,7 @@ const CalendarScreen = () => {
     });
 
     followedMarks.forEach(({ time_begin }) => {
-      const day = new Date(time_begin).toLocaleDateString('sv-SE');
+      const day = parseLocalDay(time_begin);
       if (!newMarks[day]) newMarks[day] = { marked: true, dots: [] };
       if (!newMarks[day].dots.some((dot) => dot.color === 'red')) {
         newMarks[day].dots.push({ color: 'red' });
@@ -99,7 +113,7 @@ const CalendarScreen = () => {
     });
 
     userMarks.forEach(({ time_begin }) => {
-      const day = new Date(time_begin).toLocaleDateString('sv-SE');
+      const day = parseLocalDay(time_begin);
       if (!newMarks[day]) newMarks[day] = { marked: true, dots: [] };
       if (!newMarks[day].dots.some((dot) => dot.color === 'lightgreen')) {
         newMarks[day].dots.push({ color: 'lightgreen' });
@@ -173,9 +187,10 @@ const CalendarScreen = () => {
   ): EventItem => {
     return {
       event_id: event.event_id ?? event.id,
-      name: event.name ?? 'Untitled Event',
-      tagline: event.tagline ?? '',
-      text_description: event.text_description ?? '',
+      // Fix: truncate name/description so they never cause display issues
+      name: (event.name ?? 'Untitled Event').substring(0, 100),
+      tagline: (event.tagline ?? '').substring(0, 100),
+      text_description: (event.text_description ?? '').substring(0, 500),
       time_begin: event.time_begin,
       time_end: event.time_end,
       source,
@@ -222,30 +237,6 @@ const CalendarScreen = () => {
     }
   };
 
-  const getEventGradient = (source: EventItem['source']) => {
-    switch (source) {
-      case 'private':
-        return ['#0A8FC2', '#10A6D8'];
-      case 'followed':
-        return ['#0B95C8', '#12A9DB'];
-      case 'public':
-      default:
-        return ['#0A88BC', '#11A5D6'];
-    }
-  };
-
-  const getEventPillStyle = (source: EventItem['source']) => {
-    switch (source) {
-      case 'private':
-        return styles.privatePill;
-      case 'followed':
-        return styles.followedPill;
-      case 'public':
-      default:
-        return styles.publicPill;
-    }
-  };
-
   const getEventTimeRange = (start: string, end?: string) => {
     const startDate = new Date(start);
     const endDate = end ? new Date(end) : null;
@@ -259,12 +250,9 @@ const CalendarScreen = () => {
   };
 
   const renderEventCard = ({ item }: { item: EventItem }) => {
-    const subtitle =
-      item.source === 'private'
-        ? 'Private Event'
-        : item.source === 'followed'
-        ? 'Followed Event'
-        : 'Public Event';
+    // Fix: use local date to avoid timezone shift when navigating
+    const eventDate = new Date(item.time_begin);
+    const localDateString = toLocalDateString(eventDate);
 
     return (
       <TouchableOpacity
@@ -273,14 +261,13 @@ const CalendarScreen = () => {
         onPress={() =>
           navigation.navigate('DateScreen', {
             id: userId,
-            dateString: new Date(item.time_begin).toISOString().split('T')[0],
-            dayNum: new Date(item.time_begin).getDate(),
-            month: new Date(item.time_begin).getMonth() + 1,
-            year: new Date(item.time_begin).getFullYear(),
+            dateString: localDateString,
+            dayNum: eventDate.getDate(),
+            month: eventDate.getMonth() + 1,
+            year: eventDate.getFullYear(),
           })
         }
       >
-
         <View style={styles.eventCard}>
           <LinearGradient
             colors={['rgba(0,132,209,1)', 'rgba(0,146,184,1)']}
@@ -289,10 +276,10 @@ const CalendarScreen = () => {
             style={styles.dateBadge}
           >
             <Text style={styles.dateBadgeText}>
-              {format(new Date(item.time_begin), 'd')}
+              {format(eventDate, 'd')}
             </Text>
             <Text style={styles.dateBadgeMonth}>
-              {format(new Date(item.time_begin), 'MMM')}
+              {format(eventDate, 'MMM')}
             </Text>
           </LinearGradient>
 
@@ -300,9 +287,8 @@ const CalendarScreen = () => {
             <Text style={styles.eventName} numberOfLines={1}>
               {item.name}
             </Text>
-
             <Text style={styles.eventDate}>
-              {format(new Date(item.time_begin), 'MMM d, yyyy')} •{' '}
+              {format(eventDate, 'MMM d, yyyy')} •{' '}
               {getEventTimeRange(item.time_begin, item.time_end)}
             </Text>
           </View>
@@ -369,11 +355,15 @@ const CalendarScreen = () => {
                 />
               </View>
 
+              {/* Upcoming Events header — matches Resources page style */}
               <View style={styles.upcomingContainer}>
-                <Text style={styles.eventHeader}>Upcoming Events</Text>
-                <Text style={styles.eventSubheader}>
-                  A view of what’s next
-                </Text>
+                <View style={styles.sectionLabelRow}>
+                  <View style={styles.sectionAccent} />
+                  <View>
+                    <Text style={styles.eventHeader}>Upcoming Events</Text>
+                    <Text style={styles.eventSubheader}>A view of what's next</Text>
+                  </View>
+                </View>
               </View>
             </>
           }
@@ -438,20 +428,35 @@ const styles = StyleSheet.create({
   },
 
   upcomingContainer: {
-    paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 10,
     backgroundColor: '#f4f7fa',
   },
 
+  sectionLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginHorizontal: 16,
+    gap: 10,
+  },
+
+  sectionAccent: {
+    width: 3,
+    height: 36,
+    borderRadius: 2,
+    backgroundColor: '#0088ca',
+    marginTop: 2,
+    flexShrink: 0,
+  },
+
   eventHeader: {
-    fontSize: 22,
+    fontSize: 17,
     fontWeight: '700',
     color: '#0f172a',
+    marginBottom: 2,
   },
 
   eventSubheader: {
-    marginTop: 4,
     fontSize: 13,
     color: '#6b7a8c',
   },
@@ -477,11 +482,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 12,
     elevation: 3,
-  },
-
-  eventAccent: {
-    height: 4,
-    width: '100%',
   },
 
   eventCard: {
@@ -524,42 +524,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  eventTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-
   eventName: {
     fontSize: 17,
     fontWeight: '600',
     color: '#16202a',
-  },
-
-  typePill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-  },
-
-  publicPill: {
-    backgroundColor: '#e0f4fb',
-  },
-
-  followedPill: {
-    backgroundColor: '#e2f5fb',
-  },
-
-  privatePill: {
-    backgroundColor: '#dbf3fa',
-  },
-
-  typePillText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#0c7daa',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
   },
 
   eventDate: {

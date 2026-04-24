@@ -1,102 +1,131 @@
 /*
     Modal component to create resource
 */
-import React, {useState} from "react";
-import { Modal, View, TextInput, Button, StyleSheet, SafeAreaView, Text, FlatList} from "react-native";
+import React from "react";
+import {
+    Modal, View, StyleSheet, Text, TouchableOpacity
+} from "react-native";
 import { deleteResource } from "../api/resources";
 import { useNavigation } from "@react-navigation/native";
+
 interface ModalProps {
-    resource_id: number,
-    org_id: number,
-    isVisible: boolean,
-    onClose: () => void,
+    resource_id: number;
+    org_id: number;
+    isVisible: boolean;
+    onClose: () => void;
 }
-interface ResourceInfo{
-    name: string;
-}
-const DeleteResource: React.FC<ModalProps> = ({resource_id, org_id, isVisible, onClose}) => {
+
+const STRINGS = {
+    deleteTitle: 'Delete Resource',
+    deleteMessage: 'Are you sure you want to delete this resource? This action cannot be undone.',
+    cancel: 'Cancel',
+    delete: 'Delete',
+};
+
+const DeleteResource: React.FC<ModalProps> = ({ resource_id, org_id, isVisible, onClose }) => {
     const navigation = useNavigation<any>();
-    const close = () => {
-        navigation.navigate("OrganizationProfile", {
-            org_id: org_id
-        })
-    }
-    const handleSave = async () => {
+
+    const handleDelete = async () => {
         try {
-            const response = await deleteResource(resource_id, data.name)
+            await deleteResource(resource_id, '');
+            onClose();
+            navigation.navigate("OrganizationProfile", { org_id });
         } catch (error) {
             console.log('Delete Failed', error);
             onClose();
         }
-    }
-    const [data, setData] = useState<ResourceInfo>({
-            name: "",
-        })
-    const handleInputChange = (field: keyof ResourceInfo, value: string) => {
-        setData(prevState => ({ ...prevState, [field]: value }));
     };
-    return(
-        <SafeAreaView style = {styles.safeview}>
-            <Modal 
-            transparent = {true}
+
+    return (
+        <Modal
+            transparent={true}
             animationType="fade"
-            visible = {isVisible} 
+            visible={isVisible}
             onRequestClose={onClose}
-            > 
-            <View style = {styles.container}>
-                <View style = {styles.textContainer}>
-                    <Text>Enter the name of the resource to delete</Text>
-                    <TextInput 
-                    onChangeText={(value) => handleInputChange("name", value)}
-                    maxLength={20}
-                    style = {styles.textbox}
-                    ></TextInput>
-                </View>
-                <View style = {styles.buttonContainer}>
-                    <Button 
-                    title="Close"
-                    onPress= {onClose}
-                    />
-                    <Button 
-                    title="Delete"
-                    onPress = {() => {
-                        handleSave();
-                        close();
-                    }}/>
+        >
+            <View style={styles.overlay}>
+                <View style={styles.modal}>
+                    <Text style={styles.deleteTitle}>{STRINGS.deleteTitle}</Text>
+                    <Text style={styles.deleteMessage}>{STRINGS.deleteMessage}</Text>
+                    <View style={styles.buttons}>
+                        <TouchableOpacity
+                            style={[styles.button, styles.cancelButton]}
+                            onPress={onClose}
+                        >
+                            <Text style={styles.cancelButtonText}>{STRINGS.cancel}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.button, styles.deleteButton]}
+                            onPress={handleDelete}
+                        >
+                            <Text style={styles.deleteButtonText}>{STRINGS.delete}</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </View>
-            </Modal>
-        </SafeAreaView>
+        </Modal>
     );
 };
+
 const styles = StyleSheet.create({
-    safeview: {
+    overlay: {
         flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 32,
     },
-    container: {
+    modal: {
+        backgroundColor: '#ffffff',
+        borderRadius: 20,
+        padding: 24,
+        width: '100%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.15,
+        shadowRadius: 16,
+        elevation: 8,
+    },
+    deleteTitle: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: '#0f172a',
+        marginBottom: 10,
+    },
+    deleteMessage: {
+        fontSize: 14,
+        color: '#6b7a8c',
+        lineHeight: 20,
+        marginBottom: 20,
+    },
+    buttons: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    button: {
         flex: 1,
-        backgroundColor: "white",
-        alignItems: "center",
-        justifyContent: "center"
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    textContainer: {
-        flexDirection: "column",
-        gap: 10,
+    cancelButton: {
+        backgroundColor: '#e0e0e0',
     },
-    buttonContainer: {
-        gap: 30,
-        flexDirection: "row",
-        backgroundColor: "white",
-        alignItems: "center",
-        justifyContent: "center"
+    cancelButtonText: {
+        color: '#333',
+        fontSize: 14,
+        fontWeight: '600',
     },
-    textbox:{
-        padding: 10,
-        width: 300,
-        borderRadius: 5,
-        borderWidth: 2,
-        borderColor: "lightblue",
-        backgroundColor: "white"
+    deleteButton: {
+        backgroundColor: '#e05c5c',
     },
-})
+    deleteButtonText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+});
+
 export default DeleteResource;

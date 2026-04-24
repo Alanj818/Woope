@@ -74,15 +74,12 @@ const PostDetailScreen: React.FC = () => {
   // (previously hid parent tab bar here; removed so bottom nav remains visible)
 
   const handleBack = () => {
-    const source = (route.params as any)?.source;
-    if (source === 'Search') {
-      // Navigate back to Search, preserving search state
-      navigation.navigate('Search', { preserveSearch: true });
-    } else if (navigation && navigation.goBack) {
-      navigation.goBack();
+    if (navigation.canGoBack()) {
+        navigation.goBack();
+    } else {
+        navigation.navigate('NavigationBar');
     }
-  };
-
+};
   const userCanDeletePost = (postToCheck: any) => {
     return (
       currentUserId === postToCheck.user_id ||

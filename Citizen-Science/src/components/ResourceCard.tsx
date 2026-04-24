@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import {
-    View, StyleSheet, Text, Image, Dimensions,
-    FlatList, TouchableOpacity
+    View, StyleSheet, Text, Dimensions,
+    FlatList, TouchableOpacity, TouchableWithoutFeedback
 } from "react-native";
 import { getResourceInfo } from "../api/resources";
 import { Resource } from "../api/types";
-import { AntDesign } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import UpdateResourceModal from "./UpdateResourceModal";
 import DeleteResource from "./DeleteResources";
 
@@ -17,8 +17,9 @@ interface ResourceProps {
 }
 
 const ResourcesCard: React.FC<ResourceProps> = ({ resource_id, org_id, expanded = false, hideMenu = false }) => {
-    const [isModalVisible, setIsModalVisible] = useState(false);
-    const [isDeleteVisible, setIsDeleteVisible] = useState(false);
+    const [menuVisible, setMenuVisible] = useState(false);
+    const [editVisible, setEditVisible] = useState(false);
+    const [deleteVisible, setDeleteVisible] = useState(false);
     const [data, setData] = useState<Resource[]>([]);
 
     const fetchInfo = async () => {
@@ -42,50 +43,68 @@ const ResourcesCard: React.FC<ResourceProps> = ({ resource_id, org_id, expanded 
             renderItem={({ item }) => (
                 expanded ? (
                     // Detail view — used in ResourceProfile
-                    <View style={styles.expandedContainer}>
-                        <View style={styles.titleCard}>
-                            <View style={styles.titleRow}>
-                                <Text style={styles.expandedTitle}>{item.name}</Text>
-                                <TouchableOpacity
-                                    onPress={() => setIsModalVisible(true)}
-                                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                                >
-                                    <AntDesign name="edit" color="#0084D1" size={18} />
-                                </TouchableOpacity>
+                    <TouchableWithoutFeedback onPress={() => { if (menuVisible) setMenuVisible(false); }}>
+                        <View style={styles.expandedContainer}>
+                            <View style={styles.titleCard}>
+                                <View style={styles.titleRow}>
+                                    <Text style={styles.expandedTitle}>{item.name}</Text>
+                                    {!hideMenu && (
+                                        <TouchableOpacity
+                                            onPress={() => setMenuVisible(!menuVisible)}
+                                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                        >
+                                            <MaterialIcons name="more-vert" size={20} color="#b0bec5" />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                                {item.tagline ? (
+                                    <Text style={styles.expandedTagline}>{item.tagline}</Text>
+                                ) : null}
+
+                                {menuVisible && (
+                                    <View style={styles.dropdownMenu}>
+                                        <TouchableOpacity
+                                            style={styles.menuItem}
+                                            onPress={() => { setMenuVisible(false); setEditVisible(true); }}
+                                        >
+                                            <MaterialIcons name="edit" size={17} color="#0084D1" />
+                                            <Text style={styles.menuItemText}>Edit</Text>
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            style={[styles.menuItem, styles.menuItemLast]}
+                                            onPress={() => { setMenuVisible(false); setDeleteVisible(true); }}
+                                        >
+                                            <MaterialIcons name="delete" size={17} color="#e05c5c" />
+                                            <Text style={[styles.menuItemText, styles.menuItemDestructive]}>Delete</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
                             </View>
-                            {item.tagline ? (
-                                <Text style={styles.expandedTagline}>{item.tagline}</Text>
+
+                            {item.text_description ? (
+                                <View style={styles.detailCard}>
+                                    <Text style={styles.fieldLabel}>DESCRIPTION</Text>
+                                    <Text style={styles.fieldValue}>{item.text_description}</Text>
+                                </View>
                             ) : null}
+
+                            {/* Pass current values so fields are pre-filled */}
+                            <UpdateResourceModal
+                                isVisible={editVisible}
+                                resource_id={resource_id}
+                                currentName={item.name}
+                                currentTagline={item.tagline}
+                                currentDescription={item.text_description}
+                                onClose={() => { setEditVisible(false); fetchInfo(); }}
+                            />
+                            <DeleteResource
+                                isVisible={deleteVisible}
+                                resource_id={resource_id}
+                                org_id={org_id}
+                                onClose={() => setDeleteVisible(false)}
+                            />
                         </View>
-
-                        {item.image_path ? (
-                            <View style={styles.detailCard}>
-                                <Image
-                                    style={styles.bannerImage}
-                                    source={{ uri: process.env.EXPO_PUBLIC_API_URL + '/uploads/' + item.image_path }}
-                                />
-                            </View>
-                        ) : null}
-
-                        {item.text_description ? (
-                            <View style={styles.detailCard}>
-                                <Text style={styles.fieldLabel}>DESCRIPTION</Text>
-                                <Text style={styles.fieldValue}>{item.text_description}</Text>
-                            </View>
-                        ) : null}
-
-                        <UpdateResourceModal
-                            isVisible={isModalVisible}
-                            resource_id={resource_id}
-                            onClose={() => { setIsModalVisible(false); fetchInfo(); }}
-                        />
-                        <DeleteResource
-                            isVisible={isDeleteVisible}
-                            resource_id={resource_id}
-                            org_id={org_id}
-                            onClose={() => setIsDeleteVisible(false)}
-                        />
-                    </View>
+                    </TouchableWithoutFeedback>
                 ) : (
                     // Compact view — used in lists
                     <View style={styles.card}>
@@ -95,35 +114,12 @@ const ResourcesCard: React.FC<ResourceProps> = ({ resource_id, org_id, expanded 
                                 <Text style={styles.tagline}>{item.tagline}</Text>
                             ) : null}
                         </View>
-
-                        {!hideMenu && (
-                            <TouchableOpacity
-                                onPress={() => setIsModalVisible(true)}
-                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            >
-                                <AntDesign name="edit" color="#0084D1" size={18} />
-                            </TouchableOpacity>
-                        )}
-
-                        <UpdateResourceModal
-                            isVisible={isModalVisible}
-                            resource_id={resource_id}
-                            onClose={() => { setIsModalVisible(false); fetchInfo(); }}
-                        />
-                        <DeleteResource
-                            isVisible={isDeleteVisible}
-                            resource_id={resource_id}
-                            org_id={org_id}
-                            onClose={() => setIsDeleteVisible(false)}
-                        />
                     </View>
                 )
             )}
         />
     );
 };
-
-const deviceWidth = Math.round(Dimensions.get('window').width);
 
 const styles = StyleSheet.create({
     card: {
@@ -161,7 +157,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.12,
         shadowRadius: 12,
         elevation: 3,
-        position: 'relative',
+        zIndex: 20,
     },
     titleRow: {
         flexDirection: 'row',
@@ -192,21 +188,53 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     fieldLabel: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '700',
         color: '#0088ca',
-        letterSpacing: 1,
+        letterSpacing: 0.8,
         marginBottom: 8,
+        textTransform: 'uppercase',
     },
     fieldValue: {
-        fontSize: 16,
+        fontSize: 15,
         color: '#1a2530',
-        lineHeight: 24,
+        lineHeight: 22,
     },
-    bannerImage: {
-        height: 180,
-        width: '100%',
+    dropdownMenu: {
+        position: 'absolute',
+        top: 44,
+        right: 12,
+        backgroundColor: '#ffffff',
         borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#e7f0f5',
+        zIndex: 30,
+        minWidth: 140,
+        shadowColor: '#8aa9bf',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 10,
+    },
+    menuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e7f0f5',
+    },
+    menuItemLast: {
+        borderBottomWidth: 0,
+    },
+    menuItemText: {
+        fontSize: 14,
+        color: '#0084D1',
+        fontWeight: '500',
+    },
+    menuItemDestructive: {
+        color: '#e05c5c',
     },
 });
 
