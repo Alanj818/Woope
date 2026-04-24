@@ -343,12 +343,7 @@ const Weather: React.FC = () => {
           </Text>
         </LinearGradient>
 
-        <LinearGradient
-          colors={["rgba(0,201,80,1)", "rgba(0,188,125,1)"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={[styles.card, styles.aqCard]}
-        >
+        <LinearGradient colors={["rgba(0,201,80,1)", "rgba(0,188,125,1)"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.card, styles.aqCard]}>
           <Text style={styles.cardTitle}>Air Quality</Text>
           <Text style={styles.cardTemp}>{pm25 != null ? pm25.toFixed(1) : '--'}</Text>
           <Text style={styles.cardSubtitle}>{getAQILabel(pm25)}</Text>

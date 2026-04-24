@@ -154,3 +154,19 @@ export const getUserLikedPosts = async (
 ) => {
   return fetchAPI(`/forum/posts/user/${id}/likes`, 'GET', null, setUserToken);
 };
+
+// Get all available tags
+export const getAllTags = async (
+  setUserToken: (token: string | null) => void
+) => {
+  return fetchAPI('/forum/tags', 'GET', null, setUserToken);
+};
+
+// Set tag on a post
+export const setPostTag = async (
+  post_id: number,
+  tag_id: number | null,
+  setUserToken: (token: string | null) => void
+) => {
+  return fetchAPI(`/forum/posts/${post_id}/tag`, 'POST', { tag_id }, setUserToken);
+};

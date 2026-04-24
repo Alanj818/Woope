@@ -196,21 +196,13 @@ const HomeScreen = () => {
         return post.is_active;
       });
       setPosts(postsList);
-      console.log('Posts with media:', JSON.stringify(postsList.map((p: any) => ({
-        post_id: p.post_id,
-        media: p.media
-      })), null, 2));
       const commentsMap: CommentsMap = {};
       for (const post of postsList) {
         const postComments = await getComments(post.post_id);
         commentsMap[post.post_id] = postComments;
       }
       setCommentsMap(commentsMap);
-      console.log('Avatar URLs:', postsList.map((p: any) => ({
-        post_id: p.post_id,
-        user_avatar_url: p.user_avatar_url,
-        userName: p.userName,
-      })));
+
     } catch (error) {
       console.error(error);
       setError("Failed to fetch posts.");
@@ -218,6 +210,8 @@ const HomeScreen = () => {
 
 
   };
+
+
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchPosts();
@@ -459,12 +453,39 @@ const HomeScreen = () => {
 
                       {/* Name and Time posted */}
                       <View style={styles.headerTextContainer}>
-                        <Text style={styles.userName}>{item.userName}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <Text style={styles.userName}>{item.userName}</Text>
+                          {(item as any).tag && (() => {
+                            const tagColors: Record<string, { backgroundColor: string; textColor: string }> = {
+                              General: { backgroundColor: '#E8F7EC', textColor: '#218A4A' },
+                              Environment: { backgroundColor: '#E7F0FF', textColor: '#2F6FEB' },
+                              Event: { backgroundColor: '#EDE2FF', textColor: '#8A3FFC' },
+                              Workshop: { backgroundColor: '#FFF0DC', textColor: '#B86A00' },
+                              Hazard: { backgroundColor: '#FCE3E3', textColor: '#D93025' },
+                              'Mutual Aid': { backgroundColor: '#E6F8F4', textColor: '#117A65' },
+                              'Purple Air': { backgroundColor: '#F3E8FF', textColor: '#7C3AED' },
+                            };
+                            const palette = tagColors[(item as any).tag] || { backgroundColor: '#F1F3F5', textColor: '#374151' };
+                            return (
+                              <View style={{
+                                backgroundColor: palette.backgroundColor,
+                                borderColor: palette.textColor,
+                                borderWidth: 1.5,
+                                borderRadius: 999,
+                                paddingVertical: 2,
+                                paddingHorizontal: 10,
+                              }}>
+                                <Text style={{ color: palette.textColor, fontSize: 12, fontWeight: '600' }}>
+                                  {(item as any).tag}
+                                </Text>
+                              </View>
+                            );
+                          })()}
+                        </View>
                         <Text style={styles.timestamp}>
                           {formatTimeAgo(item.created_at)}
                         </Text>
                       </View>
-
 
                     </View>
                     {userCanDeletePost(item) && (
@@ -559,11 +580,6 @@ const HomeScreen = () => {
                       } */}
                     </View>
                   )}
-
-                 
-
-
-
 
                   {isDropdownOpen && (
                     <TouchableOpacity
@@ -1102,10 +1118,10 @@ const styles = StyleSheet.create({
     width: 20,
   },
   headerTextContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: "center",
-    gap: 10,
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: "flex-start",
+    gap: 2,
   },
   userName: {
     fontSize: 16,
