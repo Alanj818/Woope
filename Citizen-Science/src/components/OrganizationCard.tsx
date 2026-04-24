@@ -5,37 +5,35 @@
     
 */
 //TODO: FIX follow button jitter when toggled
-import React, { useState,useEffect } from "react";
-import * as ImagePicker from 'expo-image-picker';
-import { View, StyleSheet, Text, Image, TouchableOpacity, Dimensions, FlatList, SafeAreaView } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, StyleSheet, Text, Image, TouchableOpacity, Dimensions } from "react-native";
 import { Organization } from "../api/types";
-import { getOrganizationById, followOrganization, unfollowOrganization, following} from "../api/organizations";
+import { getOrganizationById, followOrganization, unfollowOrganization, following } from "../api/organizations";
 import UpdateOrganizationModal from "../components/UpdateOrganizationModal";
 import { useNavigation } from "@react-navigation/native";
-import { AntDesign } from '@expo/vector-icons';
+import { AntDesign, MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface OrganizationProps {
     org_id: number;
     user_id: number;
 }
+
 interface FollowStatus {
     case: number;
 }
-//Component to display organization information on their resource page
-const OrganizationCard: React.FC<OrganizationProps> = ({org_id, user_id})=> {
+
+const OrganizationCard: React.FC<OrganizationProps> = ({ org_id, user_id }) => {
     const navigation = useNavigation<any>();
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [data, setData] = useState<Organization[]>(
-        [{org_id: 0, name: "", text_description: "", tagline: "", image_path: ""}]
+        [{ org_id: 0, name: "", text_description: "", tagline: "", image_path: "" }]
     );
     const [isFollowed, setIsFollowed] = useState<number>();
-    const [value, setValue] = useState<FollowStatus>();
-    
+
     useEffect(() => {
-        fetchInfo().then((value) => {
-            checkFollowed()
-        })
-    }, [isModalVisible, isFollowed])
+        fetchInfo().then(() => checkFollowed());
+    }, [isModalVisible, isFollowed]);
 
     // getting the information of the organization
     const fetchInfo = async () => {
@@ -45,249 +43,274 @@ const OrganizationCard: React.FC<OrganizationProps> = ({org_id, user_id})=> {
         } catch (error) {
             console.log(error);
         }
-    }
+    };
+
     const checkFollowed = async () => {
         try {
-            const response = await following(user_id,org_id);
-            setIsFollowed(response.case)
+            const response = await following(user_id, org_id);
+            setIsFollowed(response.case);
         } catch (error) {
-            console.log("Error Checking follow status" + error)
+            console.log("Error Checking follow status" + error);
         }
-    }
+    };
+
     const pressFollow = () => {
         follow();
         setIsFollowed(1);
-    }
+    };
+
     const pressUnfollow = () => {
         unfollow();
         setIsFollowed(0);
-    }
-    const follow = async() => {
-        try{
-            const response = await followOrganization(user_id, org_id);
-        }catch (error){
+    };
+
+    const follow = async () => {
+        try {
+            await followOrganization(user_id, org_id);
+        } catch (error) {
             console.log("Error following organization: " + error);
         }
-    }
-    const unfollow = async() => {
+    };
+
+    const unfollow = async () => {
         try {
-            const response = await unfollowOrganization(user_id, org_id);
+            await unfollowOrganization(user_id, org_id);
         } catch (error) {
             console.log("Error unfollowing organization: " + error);
         }
-    }
+    };
 
-    return(
-        // Container
-        <SafeAreaView style={styles.container}> 
-                <View style={styles.postBox}>
-                    {/*Organization Name, Category, Follow Button */}
-                    <View style ={styles.headerContainer}>
-                        <View>
-                            <Text style={styles.title}>{data[0].name}</Text>
-                        </View>
-                        
-                        <View style={styles.edit}>
+    const org = data[0];
 
-                            <TouchableOpacity onPress={() => setIsModalVisible(true)}>
-                                <AntDesign name="edit" color="brown" size={30}/>
-                            </TouchableOpacity>
+    return (
+        <View style={styles.container}>
 
-                            
-                            {(isFollowed == 0) &&
-                                <TouchableOpacity style={styles.follow} onPress={() => {
-                                    pressFollow();
-                                }}>
-                                    <Text>Follow</Text>
-                                </TouchableOpacity>
-                            }
-
-                            {(isFollowed == 1)&&
-                            <TouchableOpacity style={styles.follow} onPress={() => {
-                                    pressUnfollow();
-                                }}>
-                                 <Text>Unfollow</Text>
-                            </TouchableOpacity> 
-                            }
-                        </View>
-                    </View>
-                    {/*Organization Banner Image */}
-                    <View>
-                       {data[0].image_path && <Image style={styles.imageStyle} source={{uri: process.env.EXPO_PUBLIC_API_URL + '/uploads/' + data[0].image_path}}/> }
-                    </View>
-                    {/* Short Tagline */}
-                    <View>
-                        <Text style = {styles.tagline}>{data[0].tagline}</Text>
-                    </View>
-                    {/* Full Description */}
-                    <View>
-                        <Text style = {styles.description}>{data[0].text_description}</Text>
-                    </View>
-                    {/* Container for Events and Posts Button */}
-                    <View style={styles.buttonContainer}>
+            {/* Title card */}
+            <View style={styles.titleCard}>
+                <View style={styles.titleRow}>
+                    <Text style={styles.title}>{org.name}</Text>
                     <TouchableOpacity
-                    style={styles.postButton}
-                    onPress={() => {
-                        navigation.navigate("OrganizationProfile", { org_id, user_id });
-                    }}
+                        onPress={() => setIsModalVisible(true)}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
-                    <Text>View Posts</Text>
+                        <AntDesign name="edit" color="#0084D1" size={18} />
                     </TouchableOpacity>
-
-                        <TouchableOpacity style={styles.eventButton} onPress={() => navigation.navigate("EventHome", {
-                            org_id: org_id
-                        })}>
-                            <Text>View Events</Text>
-                        </TouchableOpacity>
-                    </View>
-                    <UpdateOrganizationModal
-                    isVisible = {isModalVisible} 
-                    onClose={() => {
-                        setIsModalVisible(false);
-                        fetchInfo();
-                    }} 
-                    name={data[0].name}
-                    org_id={org_id}/>
                 </View>
-    </SafeAreaView>
+                {org.tagline ? (
+                    <Text style={styles.tagline}>{org.tagline}</Text>
+                ) : null}
+
+                {/* Follow/Unfollow inline under tagline */}
+                {isFollowed === 0 && (
+                    <TouchableOpacity style={styles.followButton} onPress={pressFollow}>
+                        <Text style={styles.followButtonText}>Follow</Text>
+                    </TouchableOpacity>
+                )}
+                {isFollowed === 1 && (
+                    <TouchableOpacity style={styles.unfollowButton} onPress={pressUnfollow}>
+                        <Text style={styles.unfollowButtonText}>Unfollow</Text>
+                    </TouchableOpacity>
+                )}
+            </View>
+
+            {/* Banner image */}
+            {org.image_path ? (
+                <View style={styles.detailCard}>
+                    <Image
+                        style={styles.bannerImage}
+                        source={{ uri: process.env.EXPO_PUBLIC_API_URL + '/uploads/' + org.image_path }}
+                    />
+                </View>
+            ) : null}
+
+            {/* Description field */}
+            {org.text_description ? (
+                <View style={styles.detailCard}>
+                    <Text style={styles.fieldLabel}>DESCRIPTION</Text>
+                    <Text style={styles.fieldValue}>{org.text_description}</Text>
+                </View>
+            ) : null}
+
+            {/* Action buttons */}
+            <View style={styles.actionsRow}>
+                <TouchableOpacity
+                    style={styles.actionButtonWrap}
+                    activeOpacity={0.85}
+                    onPress={() => navigation.navigate("OrganizationProfile", { org_id, user_id })}
+                >
+                    <LinearGradient
+                        colors={['#0088ca', '#0092b8']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.actionButton}
+                    >
+                        <MaterialIcons name="article" size={18} color="#fff" />
+                        <Text style={styles.actionButtonText}>View Posts</Text>
+                    </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.actionButtonWrapSecondary}
+                    activeOpacity={0.85}
+                    onPress={() => navigation.navigate("EventHome", { org_id })}
+                >
+                    <View style={styles.actionButtonSecondary}>
+                        <MaterialIcons name="event" size={18} color="#0084D1" />
+                        <Text style={styles.actionButtonSecondaryText}>View Events</Text>
+                    </View>
+                </TouchableOpacity>
+            </View>
+
+            <UpdateOrganizationModal
+                isVisible={isModalVisible}
+                onClose={() => { setIsModalVisible(false); fetchInfo(); }}
+                name={org.name}
+                org_id={org_id}
+            />
+        </View>
     );
 };
-const deviceWidth = Math.round(Dimensions.get('window').width);
+
 const styles = StyleSheet.create({
-    container:{
-        flex: 1,
+    container: {
+        gap: 12,
+        paddingHorizontal: 16,
+        paddingTop: 12,
     },
-    cardContainer: { 
-        width: deviceWidth - 20,
-        backgroundColor: 'lightblue',
-        margin: 10,
+    titleCard: {
+        backgroundColor: '#ffffff',
         borderRadius: 20,
-        padding: 13,
-        gap: 6,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 5,
-            height: 5,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 5,
-        elevation: 9,
+        paddingHorizontal: 20,
+        paddingVertical: 18,
+        shadowColor: '#8aa9bf',
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.12,
+        shadowRadius: 12,
+        elevation: 3,
     },
-    headerContainer:{
-        flexDirection:'row',
+    titleRow: {
+        flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 4,
     },
-    imageStyle: {
-        height: 150,
-        width: deviceWidth - 50,
-        alignContent: 'center',
-        alignSelf: 'center',
+    title: {
+        fontSize: 17,
+        fontWeight: '700',
+        color: '#0f172a',
+        flex: 1,
+        marginRight: 10,
     },
-    title:{
-        fontSize: 20,
-        fontWeight: 'bold',
+    tagline: {
+        fontSize: 14,
+        color: '#6b7a8c',
+        marginBottom: 10,
     },
-    tagline:{
+    followButton: {
+        alignSelf: 'flex-start',
+        backgroundColor: '#0088ca',
+        paddingHorizontal: 14,
+        paddingVertical: 5,
+        borderRadius: 20,
+        marginTop: 4,
+    },
+    followButtonText: {
+        color: '#fff',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    unfollowButton: {
+        alignSelf: 'flex-start',
+        backgroundColor: '#e7edf3',
+        paddingHorizontal: 14,
+        paddingVertical: 5,
+        borderRadius: 20,
+        marginTop: 4,
+    },
+    unfollowButtonText: {
+        color: '#555',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    detailCard: {
+        backgroundColor: '#ffffff',
+        borderRadius: 20,
+        paddingHorizontal: 20,
+        paddingVertical: 18,
+        shadowColor: '#8aa9bf',
+        shadowOffset: { width: 0, height: 5 },
+        shadowOpacity: 0.12,
+        shadowRadius: 12,
+        elevation: 3,
+    },
+    fieldLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#0088ca',
+        letterSpacing: 1,
+        marginBottom: 8,
+    },
+    fieldValue: {
+        fontSize: 16,
+        color: '#1a2530',
+        lineHeight: 24,
+    },
+    bannerImage: {
+        height: 180,
+        width: '100%',
+        borderRadius: 12,
+    },
+    actionsRow: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    actionButtonWrap: {
+        flex: 1,
+        borderRadius: 14,
+        overflow: 'hidden',
+        shadowColor: '#0088ca',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    actionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 13,
+        gap: 6,
+    },
+    actionButtonText: {
+        color: '#fff',
         fontSize: 14,
         fontWeight: '600',
-        
     },
-    description:{
-        fontSize: 10,
-        fontWeight: '300',
+    actionButtonWrapSecondary: {
+        flex: 1,
+        borderRadius: 14,
+        overflow: 'hidden',
+        shadowColor: '#8aa9bf',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 2,
     },
-    category:{
-        fontSize:14,
-        fontWeight: '200',
-    },
-    follow:{
+    actionButtonSecondary: {
+        flexDirection: 'row',
         alignItems: 'center',
-        alignSelf: 'flex-start',
-        backgroundColor: 'white',
-        width: 70,
-        padding:5,
-        borderRadius: 10,
-        shadowOffset: {
-            width: 5,
-            height: 5,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 5,
-        elevation: 9,
-    },
-    buttonContainer:{
-        flexDirection:'row',
-        justifyContent: 'space-evenly',
-        gap: 5,
-        padding: 10,
-    },
-    eventButton:{
-        marginTop: 20,
-        padding:10,
-        borderRadius:10,
-        backgroundColor: 'white',
-        shadowOffset: {
-            width: 5,
-            height: 5,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 5,
-        elevation: 9,
-    },
-    edit: {
-        flexDirection: "row",
-        gap: 10,
-    },
-    postButton:{
-        marginTop: 20,
-        padding:10,
-        borderRadius:10,
-        backgroundColor:'white',
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 5,
-            height: 5,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 5,
-        elevation: 9,
-        
-    },
-    postBox: {
-        backgroundColor: "#B4D7EE",
-        borderRadius: 30,
-        paddingVertical: 20,
-        paddingHorizontal: 15,
-        justifyContent: "center",
-        alignSelf: "stretch",
-        marginHorizontal: 10,
-        marginBottom: 40,
+        justifyContent: 'center',
+        paddingVertical: 13,
+        gap: 6,
+        backgroundColor: '#ffffff',
         borderWidth: 1,
-        borderColor: "#E7F3FD",
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 6,
-        elevation: 5,
-        marginTop: 6,
-      },
-      postBoxInner: {
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: "transparent",
-        alignSelf: "stretch",
-        borderBottomWidth: 1,
-        borderBottomColor: "#D1E3FA",
-      },
-      postBoxText: {
-        fontSize: 16,
-        color: "#333",
-        padding: 10,
-        backgroundColor: "#FFFFFF",
-        borderRadius: 18,
-        overflow: "hidden",
-        textAlign: "center",
-      }
+        borderColor: '#e7f0f5',
+    },
+    actionButtonSecondaryText: {
+        color: '#0084D1',
+        fontSize: 14,
+        fontWeight: '600',
+    },
 });
 
 export default OrganizationCard;
