@@ -15,7 +15,7 @@ const FIELDS = [
   "pm2.5_cf_1",
   "pm10.0",
   "temperature",
-  "humidity", 
+  "humidity",
   "pressure",
   "voc",
 ].join(",");
@@ -40,9 +40,9 @@ export async function fetchAndLogPurpleAirData() {
     console.log("🟣 PurpleAir API key configured:", !!PURPLE_AIR_API_KEY);
 
     const sensorsResult = await pool.query(
-      `SELECT id, source_id, name
-       FROM sensors
-       WHERE source = 'purpleair' AND deleted_at IS NULL`
+    `SELECT id, source_id, name
+    FROM sensors
+    WHERE source = 'purpleair' AND deleted_at IS NULL`
     );
 
     if (sensorsResult.rows.length === 0) {

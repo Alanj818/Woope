@@ -28,6 +28,7 @@
     "@shopify/react-native-skia": "^2.2.12",
     "atob": "^2.1.2",
     "axios": "^1.6.7",
+    "chrome-launcher": "^1.2.1",
     "core-js": "^3.39.0",
     "date-fns": "^4.1.0",
     "expo": "54.0.20",
