@@ -161,5 +161,5 @@ void loop() {
   //   Serial.println(latest.pm10_atm);
   // }
   }
-  delay(500);
+  delay(60000);
 }
