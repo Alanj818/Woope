@@ -16,6 +16,7 @@ The app has two states: **logged out** and **logged in**. Once logged in, there 
   4. Once verified, your account is created and you're logged in automatically.
 
 ---
+## Logged In
 
 ## Home Tab
 The community feed. Think of it like a social media timeline.
