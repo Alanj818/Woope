@@ -76,6 +76,9 @@ export function startTtnMqtt() {
       const latitude_deg  = pickNumber(decoded, ["latitude_deg", "latitudeDeg", "lat_deg", "latDeg", "lat", "latitude"]);
       const longitude_deg = pickNumber(decoded, ["longitude_deg", "longitudeDeg", "lon_deg", "lonDeg", "lng", "lon", "longitude"]);
       const gas_ohms      = pickNumber(decoded, ["gas_ohms", "gasOhms", "gas", "gas_resistance", "gasResistance"]);
+      const pm1_0         = pickNumber(decoded, ["pm1_0"]);
+      const pm2_5_atm     = pickNumber(decoded, ["pm2_5_atm"]);
+      const pm10_0        = pickNumber(decoded, ["pm10_0"]);
 
       const trimmedRaw = {
         device_id: deviceId,
@@ -118,9 +121,12 @@ export function startTtnMqtt() {
           gas_ohms,
           f_cnt,
           f_port,
-          raw_payload
+          raw_payload,
+          pm1_0,
+          pm2_5_atm,
+          pm10_0
         )
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
         ON CONFLICT DO NOTHING
         RETURNING id`,
         [
@@ -136,6 +142,9 @@ export function startTtnMqtt() {
           uplink?.f_cnt ?? null,
           uplink?.f_port ?? null,
           trimmedRaw,
+          pm1_0,
+          pm2_5_atm,
+          pm10_0,
         ]
       );
 
