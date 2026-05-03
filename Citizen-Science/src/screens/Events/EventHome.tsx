@@ -1,19 +1,21 @@
-import React, {useState,useEffect, useContext} from 'react';
-import { View, Text, SafeAreaView, FlatList, TouchableOpacity, StyleSheet, StatusBar, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, SafeAreaView, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { RouteProp } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import EventCard from '../../components/EventCard';
-import CreateEvent from '../../components/CreateEvent'
+import CreateEvent from './CreateEvent';
 import TopNav from '../../components/TopNav';
-import { MaterialIcons, Octicons } from '@expo/vector-icons';
+import { Octicons } from '@expo/vector-icons';
 import { getEvents } from '../../api/event';
 import { Event } from '../../api/types';
 
-interface EventHomeProps {
-  route: RouteProp<{ params: { org_id: number } }, 'params'>;
-}
+type ResourceStackParamList = {
+  EventHome: { org_id: number };
+};
 
-export const EventHome = ({ route }: EventHomeProps) => {
+type Props = NativeStackScreenProps<ResourceStackParamList, 'EventHome'>;
+
+export const EventHome = ({ route }: Props) => {
     const navigation = useNavigation<any>();
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [eventData, setEventData] = useState<Event[]>([]);

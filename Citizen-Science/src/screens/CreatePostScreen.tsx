@@ -12,6 +12,7 @@ import { jwtDecode } from 'jwt-decode';
 import { AccessToken } from '../util/token';
 import { logActivity } from '../api/activity';
 import { fetchAPI } from '../api/fetch';
+import { TAG_STYLES, getTagPalette } from '../util/tags';
 
 interface PdfFile {
   uri: string;
@@ -38,24 +39,11 @@ const CreatePostScreen = () => {
    const [userAvatar, setUserAvatar] = useState<string | null>(null); 
   const postTextInputRef = useRef<TextInput>(null);
 
-  const [tagItems, setTagItems] = useState([
-    { label: 'General', value: 'General' },
-    { label: 'Environment', value: 'Environment' },
-    { label: 'Event', value: 'Event' },
-    { label: 'Workshop', value: 'Workshop' },
-    { label: 'Hazard', value: 'Hazard' },
-    { label: 'Mutual Aid', value: 'Mutual Aid' },
-  ]);
-
-  const tagStyles: Record<string, { backgroundColor: string; textColor: string }> = {
-    General: { backgroundColor: '#E8F7EC', textColor: '#218A4A' },
-    Environment: { backgroundColor: '#E7F0FF', textColor: '#2F6FEB' },
-    Event: { backgroundColor: '#EDE2FF', textColor: '#8A3FFC' },
-    Workshop: { backgroundColor: '#FFF0DC', textColor: '#B86A00' },
-    Hazard: { backgroundColor: '#FCE3E3', textColor: '#D93025' },
-    'Mutual Aid': { backgroundColor: '#E6F8F4', textColor: '#117A65' },
-
-  };
+  // Tag picker items — derived from the shared TAG_STYLES so any tag added
+  // to src/util/tags.ts shows up here automatically. We exclude the "All"
+  // sentinel that HomeScreen uses for filtering since you can't post with
+  // "no tag" from this screen.
+  const tagItems = Object.keys(TAG_STYLES).map((value) => ({ label: value, value }));
 
 
   useEffect(() => {
@@ -285,10 +273,7 @@ const CreatePostScreen = () => {
             contentContainerStyle={styles.tagRow}
           >
             {tagItems.map((item) => {
-              const palette = tagStyles[item.value] || {
-                backgroundColor: '#F1F3F5',
-                textColor: '#374151',
-              };
+              const palette = getTagPalette(item.value);
 
               return (
                 <TouchableOpacity

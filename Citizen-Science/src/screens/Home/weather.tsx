@@ -173,7 +173,7 @@
 //                 </LinearGradient>
 //             </View> */}
 
-        
+
 //             <Text style={styles.cardTitle}>Weather</Text>
 //             <Text style={styles.cardTemp}>{tempF != null ? `${tempF}°F` : '--'}</Text>
 //             <Text style={styles.cardSubtitle}>
@@ -264,7 +264,7 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, Image } from 'react-native';
 import * as Location from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getPurpleAirDevice, PurpleAirSensor } from '../../api/purpleair';
@@ -313,7 +313,7 @@ const Weather: React.FC = () => {
   if (loading) return <ActivityIndicator size="large" color="#ff8c00" />;
   if (error) return <Text style={styles.errorText}>Error: {error}</Text>;
 
- 
+
   const tempF = sensorData?.temperature_c != null ? sensorData.temperature_c : null;
 
   const pm25 = sensorData?.pm2_5_atm ?? null;
@@ -328,7 +328,13 @@ const Weather: React.FC = () => {
 
   return (
     <View style={styles.outer}>
-      <Text style={styles.locationLabel}>{locationName}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Image
+          style={{ width:25, height: 25 }}
+          source={require('../../../assets/pinLogo.png')}
+        />
+        <Text style={styles.locationLabel}>{locationName}</Text>
+      </View>
       <View style={styles.cardsRow}>
         <LinearGradient
           colors={["rgba(0,166,244,1)", "rgba(0,184,219,1)"]}
