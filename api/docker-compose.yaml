@@ -5,6 +5,9 @@ services:
         ports:
             - "3000:3000"
         command: npm run dev
+        dns:
+            - 8.8.8.8
+            - 8.8.4.4
         volumes:
             - .:/usr/src/app
         environment:

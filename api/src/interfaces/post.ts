@@ -12,7 +12,8 @@ export interface Post{
     comments_count: number, 
     likes_count: number,
     is_active: boolean,
-    org_id: number
+    org_id: number,
+    tags: string
 }
 
 export interface PostWithUsername{
@@ -25,7 +26,9 @@ export interface PostWithUsername{
     comments_count: number,
     likes_count: number,
     is_active: boolean,
-    org_id: number
+    org_id: number,
+    tags: string
+
 }
 
 export interface PostWithMedia {
@@ -40,6 +43,7 @@ export interface PostWithMedia {
     is_active: boolean;
     media: PostMedia[];
     org_id: number
+    tags: string
 }
 
 export interface UserLikedPosts{

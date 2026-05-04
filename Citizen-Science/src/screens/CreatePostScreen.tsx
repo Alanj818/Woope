@@ -1,6 +1,7 @@
-import React, { useContext, useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Alert, Image, SafeAreaView } from 'react-native';
+import React, { useContext, useState, useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Alert, Image, SafeAreaView, } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { createPostWithMedia, getAllTags, setPostTag } from '../api/posts';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import TopNav from '../components/TopNav';
@@ -9,13 +10,16 @@ import * as DocumentPicker from 'expo-document-picker';
 import { AuthContext } from '../util/AuthContext';
 import { jwtDecode } from 'jwt-decode';
 import { AccessToken } from '../util/token';
-import { createPostWithMedia } from '../api/posts';
 import { logActivity } from '../api/activity';
+import { fetchAPI } from '../api/fetch';
+import { TAG_STYLES, getTagPalette } from '../util/tags';
 
 interface PdfFile {
   uri: string;
   name: string;
 }
+
+
 
 const CreatePostScreen = () => {
   const navigation: any = useNavigation();
@@ -25,13 +29,36 @@ const CreatePostScreen = () => {
   const userOrgId = decodedToken ? decodedToken.org_id : null;
   const userName = decodedToken ? decodedToken.firstName + " " + decodedToken.lastName : null;
 
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+
   const [postText, setPostText] = useState('');
   const [postImages, setPostImages] = useState<string[]>([]);
   const MAX_IMAGES = 4
   const [postPdfs, setPostPdfs] = useState<PdfFile[]>([]);
   const [error, setError] = useState('');
+   const [userAvatar, setUserAvatar] = useState<string | null>(null); 
   const postTextInputRef = useRef<TextInput>(null);
 
+  // Tag picker items — derived from the shared TAG_STYLES so any tag added
+  // to src/util/tags.ts shows up here automatically. We exclude the "All"
+  // sentinel that HomeScreen uses for filtering since you can't post with
+  // "no tag" from this screen.
+  const tagItems = Object.keys(TAG_STYLES).map((value) => ({ label: value, value }));
+
+
+  useEffect(() => {
+    const fetchAvatar = async () => {
+    try {
+      const response = await fetchAPI(`/community/get-user-info/${userId}`, 'GET', null, setUserToken);
+      if (response?.user?.image_url) {
+        setUserAvatar(response.user.image_url);
+      }
+    } catch (e) {
+      console.warn('Failed to fetch avatar', e);
+    }
+  };
+  if (userId) fetchAvatar();
+  }, [userId]);
 
 
   useFocusEffect(
@@ -112,8 +139,8 @@ const CreatePostScreen = () => {
 
   const handleCreatePost = async () => {
     setError('');
-    if (!postText.trim() && postImages.length <= 0 ) {
-      setError('Please provide text for your post or a image.');
+    if (!postText.trim() && postImages.length <= 0) {
+      setError('Please provide text for your post or an image.');
       return;
     } else if (userId === null) {
       setError('Please login to post.');
@@ -121,7 +148,7 @@ const CreatePostScreen = () => {
     }
     try {
       const postOrgId = userOrgId ?? null;
-      await createPostWithMedia(
+      const newPost = await createPostWithMedia(
         Number(userId),
         postOrgId,
         postText,
@@ -129,14 +156,23 @@ const CreatePostScreen = () => {
         postPdfs,
         setUserToken
       );
-      await logActivity(userId, `User created new post with text: "${postText}"`);
 
-      // Reset the form
+      // Save tag if one was selected
+      if (selectedTag && newPost?.post_id) {
+        const tags = await getAllTags(setUserToken);
+        const matched = tags.find((t: any) => t.name === selectedTag);
+        if (matched) {
+          await setPostTag(newPost.post_id, matched.tag_id, setUserToken);
+        }
+      }
+
+
+
+      await logActivity(userId, `User created new post with text: "${postText}"`);
       setPostText('');
       setPostImages([]);
       setPostPdfs([]);
-
-      // Navigate back
+      setSelectedTag(null);
       navigation.goBack();
     } catch (error) {
       console.error(error);
@@ -148,7 +184,7 @@ const CreatePostScreen = () => {
     setPostImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  
+
 
   return (
     <>
@@ -163,11 +199,17 @@ const CreatePostScreen = () => {
           <View style={styles.composerWrapper}>
             <Image
               source={{
-                uri: 'https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png',
+                uri: userAvatar
+                  ? `${process.env.EXPO_PUBLIC_API_URL}${userAvatar}`
+                  : `https://ui-avatars.com/api/?name=${encodeURIComponent(userName || 'User')}&background=e5e7eb&color=6b7280&size=128`
               }}
               style={styles.avatar}
+              onError={(e) => {
+                e.currentTarget.setNativeProps({
+                  src: [{ uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(userName || 'User')}&background=e5e7eb&color=6b7280&size=128` }]
+                });
+              }}
             />
-
             <View style={styles.composerSection}>
               <TextInput
                 ref={postTextInputRef}
@@ -199,6 +241,8 @@ const CreatePostScreen = () => {
                 </View>
               )}
 
+
+
               {/* Deprectaed fire upload feature */}
               {/* {postPdfs.length > 0 && (
                 <View style={styles.pdfContainer}>
@@ -221,6 +265,45 @@ const CreatePostScreen = () => {
         </ScrollView>
 
         <View style={styles.footer}>
+          {/* Tag picker  */}
+          <Text style={styles.fieldLabel}>Tag</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tagRow}
+          >
+            {tagItems.map((item) => {
+              const palette = getTagPalette(item.value);
+
+              return (
+                <TouchableOpacity
+                  key={item.value}
+                  onPress={() => setSelectedTag(selectedTag === item.value ? null : item.value)}
+                  style={[
+                    styles.tagChip,
+                    {
+                      backgroundColor: selectedTag === item.value
+                        ? palette.textColor
+                        : palette.backgroundColor,
+                      borderColor: palette.textColor,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.tagChipText,
+                      { color: selectedTag === item.value ? '#fff' : palette.textColor },
+                    ]}
+                  >
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+
+
           <TouchableOpacity disabled={!postText.trim() && postImages.length <= 0} onPress={handleCreatePost} activeOpacity={0.8} style={styles.postButtonWrapper}>
             <LinearGradient
               colors={["rgba(0,132,209,1)", "rgba(0,146,184,1)"]}
@@ -366,6 +449,26 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: 8,
+  },
+  tagChip: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    marginRight: 10,
+    borderWidth: 1.5,
+  },
+  tagChipText: {
+    fontSize: 16,
+  },
+  fieldLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 10,
+  },
+  tagRow: {
+    paddingBottom: 18,
+    paddingRight: 18,
   },
 });
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Table from "../components/Table";
 import { useNavigate } from "react-router-dom";
-import { getPosts, searchPosts, updatePost, deletePost } from "../api/posts";
+import { getPosts, searchPosts, deletePost } from "../api/posts";
 import Button from "../components/Button";
 import Modal from "../components/Modal";
 import PageHeader from "../components/PageHeader";
@@ -12,7 +12,6 @@ const PostManager = () => {
   const [searchInput, setSearchInput] = useState("");
   const [searchResults, setSearchResults] = useState<string[][]>([]);
   const [selectedPost, setSelectedPost] = useState<any>(null);
-  const [editContent, setEditContent] = useState("");
 
   const tableHeaders = ["ID", "User", "Content", "Actions"];
 
@@ -30,24 +29,14 @@ const PostManager = () => {
             "" + post.post_id,
             post.user_id.toString(),
             post.content,
-            <>
-              <button
-                className="me-2 btn btn-primary"
-                onClick={() => handleEditPost(post)}
-                data-bs-toggle="modal"
-                data-bs-target="#editPostModal"
-              >
-                Edit
-              </button>
-              <button
-                className="btn btn-danger"
-                onClick={() => handleDeletePost(post)}
-                data-bs-toggle="modal"
-                data-bs-target="#deletePostModal"
-              >
-                Delete
-              </button>
-            </>,
+            <button
+              className="btn btn-danger"
+              onClick={() => handleDeletePost(post)}
+              data-bs-toggle="modal"
+              data-bs-target="#deletePostModal"
+            >
+              Delete
+            </button>,
           ])
         );
       }
@@ -65,24 +54,14 @@ const PostManager = () => {
           "" + post.post_id,
           post.user_id.toString(),
           post.content,
-          <>
-            <button
-              className="me-2 btn btn-primary"
-              onClick={() => handleEditPost(post)}
-              data-bs-toggle="modal"
-              data-bs-target="#editPostModal"
-            >
-              Edit
-            </button>
-            <button
-              className="btn btn-danger"
-              onClick={() => handleDeletePost(post)}
-              data-bs-toggle="modal"
-              data-bs-target="#deletePostModal"
-            >
-              Delete
-            </button>
-          </>,
+          <button
+            className="btn btn-danger"
+            onClick={() => handleDeletePost(post)}
+            data-bs-toggle="modal"
+            data-bs-target="#deletePostModal"
+          >
+            Delete
+          </button>,
         ])
       );
     } catch (e) {
@@ -90,23 +69,8 @@ const PostManager = () => {
     }
   };
 
-  const handleEditPost = (post: any) => {
-    setSelectedPost(post);
-    setEditContent(post.content);
-  };
-
   const handleDeletePost = (post: any) => {
     setSelectedPost(post);
-  };
-
-  const confirmEditPost = async () => {
-    try {
-      await updatePost(selectedPost.post_id, editContent);
-      fetchPosts();
-      alert("Post updated successfully.");
-    } catch (e) {
-      console.error("Error updating post:", e);
-    }
   };
 
   const confirmDeletePost = async () => {
@@ -121,34 +85,6 @@ const PostManager = () => {
 
   return (
     <div className="container-lg">
-      {/* Edit Post Modal */}
-      <Modal
-        id="editPostModal"
-        title="Edit Post"
-        body={
-          <>
-            <textarea
-              cols={40}
-              rows={5}
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-            ></textarea>
-          </>
-        }
-        footer={
-          <>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={confirmEditPost}
-              data-bs-dismiss="modal"
-            >
-              Save Changes
-            </button>
-          </>
-        }
-      />
-
       {/* Delete Confirmation Modal */}
       <Modal
         id="deletePostModal"

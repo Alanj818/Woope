@@ -21,13 +21,12 @@ import CreateOrganization from '../screens/Organizations/CreateOrganization';
 import CreateCategory from '../screens/Organizations/CreateCategory';
 import FeatureOrganization from '../screens/Organizations/FeatureOrganization';
 import EventHome from '../screens/Events/EventHome';
-// ...existing code...
 import ProfileStackNavigator from './ProfileStackNav'
-import DateScreen from '../screens/Calendar/DateScreen';
-//import OldCalendarScreen from '../screens/OldCalendarScreen'
-import {usePalette} from '../theme/paletteController';
+import { usePalette } from '../theme/paletteController';
 import { AuthContext } from '../util/AuthContext';
 import { jwtDecode } from 'jwt-decode';
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 
 const Tab = createBottomTabNavigator();
 
@@ -66,8 +65,8 @@ const AnimatedTabIcon: React.FC<AnimatedTabIconProps> = ({ focused, IconPath }) 
 const ResourceStack = createNativeStackNavigator();
 const ResourceStackScreen = () => (
     <ResourceStack.Navigator screenOptions={{ headerShown: false }}>
-        <ResourceStack.Screen name='ResourceHome' component={ResourceHome}/>
-        <ResourceStack.Screen name='OrganizationCategory' component={OrganizationCategory}/>
+        <ResourceStack.Screen name='ResourceHome' component={ResourceHome} />
+        <ResourceStack.Screen name='OrganizationCategory' component={OrganizationCategory} />
         <ResourceStack.Screen name="OrganizationFollowed" component={OrganizationFollowed} />
         <ResourceStack.Screen name="OrganizationSearch" component={OrganizationSearch} />
         <ResourceStack.Screen name="SpecificCategory" component={SpecificCategory} />
@@ -77,28 +76,17 @@ const ResourceStackScreen = () => (
         <ResourceStack.Screen name="CreateOrganization" component={CreateOrganization} />
         <ResourceStack.Screen name="CreateCategory" component={CreateCategory} />
         <ResourceStack.Screen name="FeatureOrganization" component={FeatureOrganization} />
-        <ResourceStack.Screen name="EventHome" component={EventHome}/>
-        {/* <ResourceStack.Screen name="CreateUserEvent" component={CreateUserEvent} /> */}
+        <ResourceStack.Screen name="EventHome" component={EventHome} />
     </ResourceStack.Navigator>
 )
 
 const ProfileStack = createNativeStackNavigator();
 
-// const ProfileStackScreen = () => {
-//   const { userToken } = useContext(AuthContext);
-//   const decodedToken = userToken ? jwtDecode<AccessToken>(userToken) : null;
-//   const currentUserID = decodedToken ? decodedToken.user_id : null;
-
-//   return (
-//     <ProfileStack.Navigator screenOptions={{ headerShown: false }}>
-//       <ProfileStack.Screen name="ProfileMain" component={ProfileScreen} initialParams={{ userID: currentUserID }}/>
-//     </ProfileStack.Navigator>
-//   );
-// };
 
 const NavigationBar = () => {
-    const {theme} = usePalette();
+    const { theme } = usePalette();
     const { userToken } = useContext(AuthContext);
+    const inserts = useSafeAreaInsets();
     let currentUserID: number | undefined = undefined;
     try {
         if (userToken) {
@@ -108,6 +96,17 @@ const NavigationBar = () => {
     } catch (e) {
         currentUserID = undefined;
     }
+
+    const tabBarStyle = {
+        backgroundColor: "#ffffff",
+        paddingTop: 2,
+        paddingBottom: inserts.bottom ,   
+        height: 50 + inserts.bottom,        
+        borderTopLeftRadius: 0,
+        borderTopRightRadius: 0,
+    };
+
+
     // shared tab bar style is declared at module scope (TAB_BAR_STYLE)
     return (
         <View style={{ flex: 1 }}>
@@ -118,7 +117,7 @@ const NavigationBar = () => {
                         let IconPath;
                         switch (route.name) {
                             case 'Home':
-                                IconPath= mdiHome;
+                                IconPath = mdiHome;
                                 break;
                             case 'Calendar':
                                 IconPath = mdiCalendar;
@@ -139,7 +138,7 @@ const NavigationBar = () => {
                     },
                     tabBarActiveTintColor: 'blue',
                     tabBarInactiveTintColor: 'black',
-                    tabBarStyle: TAB_BAR_STYLE,
+                    tabBarStyle: tabBarStyle,
                     tabBarLabelStyle: {
                         marginBottom: 3,
                     },

@@ -15,7 +15,9 @@ import {
     searchPosts,
     getPostsByOrgId,
     savePostMedia,
-    deletePostMedia
+    deletePostMedia,
+    getAllTags,      
+    setPostTag,
 } from '../models/posts';
 
 import { authenticateToken, requirePermission } from '../middleware/authMiddleware';
@@ -177,6 +179,19 @@ router.get('/:id/posts', authenticateToken, async (req: express.Request, res: ex
     }
 });
 
+router.get('/tags', authenticateToken, async (req: express.Request, res: express.Response) => {
+    try {
+        const tags = await getAllTags();
+        res.status(200).json(tags);
+    } catch (error) {
+        if (error instanceof Error) {
+            res.status(500).json(`Internal server error: ${error.message}`);
+        } else {
+            res.status(500).json('Internal server error: An unknown error occurred');
+        }
+    }
+});
+
 // ─── POST Routes ──────────────────────────────────────────────────────────────
 
 // Create post with media — must be before /posts
@@ -233,6 +248,23 @@ router.post('/posts', authenticateToken, requirePermission('create_post'), async
     try {
         const newPost = await createPost(Number(req.body.user_id), req.body.org_id, req.body.content);
         res.status(201).json(newPost);
+    } catch (error) {
+        if (error instanceof Error) {
+            res.status(500).json(`Internal server error: ${error.message}`);
+        } else {
+            res.status(500).json('Internal server error: An unknown error occurred');
+        }
+    }
+});
+
+// Set tag on a post — add in the POST Routes section, before /posts
+router.post('/posts/:id/tag', authenticateToken, async (req: express.Request, res: express.Response) => {
+    console.log('Tag route hit, post_id:', req.params.id, 'tag_id:', req.body.tag_id);
+    try {
+        const post_id = Number(req.params.id);
+        const tag_id = req.body.tag_id ?? null;
+        await setPostTag(post_id, tag_id);
+        res.status(200).json({ message: 'Tag updated successfully' });
     } catch (error) {
         if (error instanceof Error) {
             res.status(500).json(`Internal server error: ${error.message}`);

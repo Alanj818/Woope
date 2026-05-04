@@ -1,18 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, SafeAreaView, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { RouteProp } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { format } from 'date-fns';
 import { Octicons } from '@expo/vector-icons';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import CreateEvent from './CreateEvent';
 import TopNav from '../../components/TopNav';
-import CreateEvent from '../../components/CreateEvent';
 import { getEvents } from '../../api/event';
 import { Event } from '../../api/types';
-
-interface EventHomeProps {
-    route: RouteProp<{ params: { org_id: number } }, 'params'>;
-}
 
 const STRINGS = {
     title: 'Events',
@@ -21,8 +17,13 @@ const STRINGS = {
     noEvents: 'No events yet',
     noEventsSubtitle: 'Events added by this organization will appear here.',
 };
+type ResourceStackParamList = {
+  EventHome: { org_id: number };
+};
 
-export const EventHome = ({ route }: EventHomeProps) => {
+type Props = NativeStackScreenProps<ResourceStackParamList, 'EventHome'>;
+
+export const EventHome = ({ route }: Props) => {
     const navigation = useNavigation<any>();
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [eventData, setEventData] = useState<Event[]>([]);

@@ -11,22 +11,21 @@ import {
   Modal,
   Animated,
   PanResponder,
-  Button,
   SafeAreaView,
-  Switch,
   LayoutAnimation,
   Platform,
   UIManager,
+  ScrollView,
 } from "react-native";
 import { AuthContext } from "../../util/AuthContext";
 import { jwtDecode } from "jwt-decode";
 import "core-js/stable/atob";
-import { AccessToken, deleteToken } from "../../util/token";
+import { AccessToken } from "../../util/token";
 import { logoutUser } from "../../api/auth";
 import { KeyboardAwareFlatList } from "react-native-keyboard-aware-scroll-view";
 import { MaterialIcons } from "@expo/vector-icons";
 import * as Sharing from "expo-sharing";
-import Comments from "./Comments";
+import Comments from "../../components/Comments";
 import LikeButton from "../../components/LikeButton";
 import {
   widthPercentageToDP as wp,
@@ -49,20 +48,27 @@ import {
 import {
   createComment,
   deleteComment,
-  updateComment,
   likeComment,
   unlikeComment,
   getComments,
 } from "../../api/comments";
 import { Comment, PostWithUsername } from "../../api/types";
-// WelcomeBanner removed to avoid the pale blue top strip
 import FixedSwitch from "../../components/FixedSwitch";
 import { logActivity } from "../../api/activity";
 import Popup from '../../components/Popup';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { TAG_ITEMS, getTagPalette } from '../../util/tags';
+
 const HomeScreen = () => {
+  // -----------------------------------------------------------------------
+  // Layout / context
+  // -----------------------------------------------------------------------
   const insets = useSafeAreaInsets();
   const { userToken, setUserToken } = useContext(AuthContext);
-  const [data, setData] = useState(null);
+
+  // -----------------------------------------------------------------------
+  // Auth-derived values (computed once per render from the JWT)
+  // -----------------------------------------------------------------------
   const decodedToken = userToken ? jwtDecode<AccessToken>(userToken) : null;
   const userPermissions = decodedToken
     ? (decodedToken?.permissions)
@@ -79,27 +85,48 @@ const HomeScreen = () => {
   const userOrgId = decodedToken ? decodedToken.org_id : null;
   const userOrgName = decodedToken ? decodedToken.org_name : null;
   const userId = decodedToken ? decodedToken.user_id : NaN;
+
+  // -----------------------------------------------------------------------
+  // Feed state
+  // -----------------------------------------------------------------------
   const [posts, setPosts] = useState<PostWithUsername[]>([]);
-  const [activeImageIndex, setActiveImageIndex] = useState<{ [postId: number]: number }>({});
+  const [refreshing, setRefreshing] = useState(false);
+  const [listVersion, setListVersion] = useState(0);
   const [error, setError] = useState("");
+  const [postAsOrganization, setPostAsOrganization] = useState(false);
 
+  // Tag filter
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const filteredPosts = selectedTag
+    ? posts.filter((p: any) => p.tag === selectedTag)
+    : posts;
 
+  // -----------------------------------------------------------------------
+  // Image viewer (full-screen modal)
+  // -----------------------------------------------------------------------
   const [isImageViewVisible, setImageViewVisible] = useState(false);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [activeImageIndex, setActiveImageIndex] = useState<{ [postId: number]: number }>({});
 
-  const [selectedPost, setSelectedPost] = useState<PostWithUsername | null>(
-    null
-  );
+  // -----------------------------------------------------------------------
+  // Comments modal + per-post comment state
+  // -----------------------------------------------------------------------
+  const [selectedPost, setSelectedPost] = useState<PostWithUsername | null>(null);
   const [commentsModalVisible, setCommentsModalVisible] = useState(false);
   const [commentsMap, setCommentsMap] = useState<CommentsMap>({});
+  const [modalY] = useState(new Animated.Value(0));
+
+  // -----------------------------------------------------------------------
+  // Per-post UI state
+  // -----------------------------------------------------------------------
   const [visibleDropdown, setVisibleDropdown] = useState<string | null>(null);
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
   const [postPendingDelete, setPostPendingDelete] = useState<PostWithUsername | null>(null);
-  const [postAsOrganization, setPostAsOrganization] = useState(false);
-  const [modalY] = useState(new Animated.Value(0));
-  const [refreshing, setRefreshing] = useState(false);
-  const [listVersion, setListVersion] = useState(0);
+
+  // -----------------------------------------------------------------------
+  // Navigation
+  // -----------------------------------------------------------------------
   const navigation: any = useNavigation();
   const route = useRoute();
 
@@ -157,6 +184,7 @@ const HomeScreen = () => {
       }
     }
   };
+  const tabBarHeight = useBottomTabBarHeight();
 
   interface CommentsMap {
     [key: number]: Comment[];
@@ -187,8 +215,6 @@ const HomeScreen = () => {
     }
   }, []);
 
-
-
   const fetchPosts = async () => {
     try {
       let postsList = await getAllPostsWithMedia(userId, setUserToken);
@@ -196,21 +222,13 @@ const HomeScreen = () => {
         return post.is_active;
       });
       setPosts(postsList);
-      console.log('Posts with media:', JSON.stringify(postsList.map((p: any) => ({
-        post_id: p.post_id,
-        media: p.media
-      })), null, 2));
       const commentsMap: CommentsMap = {};
       for (const post of postsList) {
         const postComments = await getComments(post.post_id);
         commentsMap[post.post_id] = postComments;
       }
       setCommentsMap(commentsMap);
-      console.log('Avatar URLs:', postsList.map((p: any) => ({
-        post_id: p.post_id,
-        user_avatar_url: p.user_avatar_url,
-        userName: p.userName,
-      })));
+
     } catch (error) {
       console.error(error);
       setError("Failed to fetch posts.");
@@ -218,27 +236,14 @@ const HomeScreen = () => {
 
 
   };
+
+
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchPosts();
     setRefreshing(false);
     await logActivity(userId, `Refreshed post feed.`)
   };
-
-  // Deprecated Pdf opener
-  // const handleOpenPdf = async (pdfUri: string) => {
-  //   try {
-  //     const isAvailable = await Sharing.isAvailableAsync();
-  //     if (isAvailable) {
-  //       await Sharing.shareAsync(pdfUri);
-  //     } else {
-  //       alert("Sharing is not available");
-  //     }
-  //   } catch (error) {
-  //     alert("An error occurred while trying to share the PDF.");
-  //     console.error(error);
-  //   }
-  // };
 
   const handleImagePress = (urls: string[], index: number) => {
     setSelectedImages(urls);
@@ -402,6 +407,7 @@ const HomeScreen = () => {
       },
     ],
   };
+  
 
   return (
     <>
@@ -422,23 +428,22 @@ const HomeScreen = () => {
             onValueChange={togglePostAsOrg}
             value={postAsOrganization}
           ></FixedSwitch>
+          
+
         )}
-        {data && <Text>{JSON.stringify(data, null, 2)}</Text>}
         <KeyboardAwareFlatList
           style={{ backgroundColor: 'transparent' }}
-          data={posts}
-          extraData={listVersion}
+          data={filteredPosts}
+          extraData={[listVersion, selectedTag]}
           keyExtractor={(item) => item.post_id.toString()}
           refreshing={refreshing}
           onRefresh={onRefresh}
-          contentContainerStyle={[{ paddingTop: 0, paddingBottom: insets.bottom + 10, backgroundColor: 'transparent' }]}
+          contentContainerStyle={[{ paddingTop: 0, paddingBottom: tabBarHeight, backgroundColor: 'transparent' }]}
+          
           renderItem={({ item }) => {
             const isDropdownOpen = visibleDropdown === item.post_id.toString();
             return (
-              <TouchableOpacity
-                onPress={() => isDropdownOpen ? null : handlePostPress(item)}
-                activeOpacity={isDropdownOpen ? 1 : 0.7}
-              >
+              <TouchableOpacity onPress={() => isDropdownOpen ? null : handlePostPress(item)} activeOpacity={isDropdownOpen ? 1 : 0.7}>
                 <View style={styles.post}>
                   <View style={styles.headerRow}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
@@ -457,14 +462,34 @@ const HomeScreen = () => {
                         }}
                       />
 
+                      
+
                       {/* Name and Time posted */}
                       <View style={styles.headerTextContainer}>
-                        <Text style={styles.userName}>{item.userName}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <Text style={styles.userName}>{item.userName}</Text>
+                          {(item as any).tag && (() => {
+                            const palette = getTagPalette((item as any).tag);
+                            return (
+                              <View style={{
+                                backgroundColor: palette.backgroundColor,
+                                borderColor: palette.textColor,
+                                borderWidth: 1.5,
+                                borderRadius: 999,
+                                paddingVertical: 2,
+                                paddingHorizontal: 10,
+                              }}>
+                                <Text style={{ color: palette.textColor, fontSize: 12, fontWeight: '600' }}>
+                                  {(item as any).tag}
+                                </Text>
+                              </View>
+                            );
+                          })()}
+                        </View>
                         <Text style={styles.timestamp}>
                           {formatTimeAgo(item.created_at)}
                         </Text>
                       </View>
-
 
                     </View>
                     {userCanDeletePost(item) && (
@@ -560,11 +585,6 @@ const HomeScreen = () => {
                     </View>
                   )}
 
-                 
-
-
-
-
                   {isDropdownOpen && (
                     <TouchableOpacity
                       activeOpacity={1}
@@ -616,6 +636,41 @@ const HomeScreen = () => {
                   </View>
                 </TouchableOpacity>
               </LinearGradient>
+
+              <View style={styles.tagDivider} />
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.tagRow}
+              >
+                {TAG_ITEMS.map((item) => {
+                  const palette = getTagPalette(item.value);
+                  const selected = selectedTag === item.value;
+                  return (
+                    <TouchableOpacity
+                      key={item.label}
+                      onPress={() => setSelectedTag(selected ? null : item.value)}
+                      style={[
+                        styles.tagChip,
+                        {
+                          backgroundColor: palette.backgroundColor,
+                          borderColor: selected ? palette.textColor : 'transparent',
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.tagChipText,
+                          { color: palette.textColor, fontWeight: selected ? '700' : '500' },
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+              <View style={styles.tagDivider} />
             </>
           }
           showsVerticalScrollIndicator={false}
@@ -783,10 +838,30 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   flexContainer: {
     flex: 1,
-    paddingHorizontal: 22,
+    paddingHorizontal: 20,
     paddingTop: 0,
-    paddingBottom: 22,
+    paddingBottom: 0,
     backgroundColor: 'transparent',
+  },
+  tagRow: {
+    paddingHorizontal: 4,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  tagDivider: {
+    height: 1,
+    backgroundColor: '#e5e7eb',
+    width: '100%',
+  },
+  tagChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+  },
+  tagChipText: {
+    fontSize: 13,
+    letterSpacing: 0.2,
   },
   postBox: {
     backgroundColor: "#B4D7EE",
@@ -1102,10 +1177,10 @@ const styles = StyleSheet.create({
     width: 20,
   },
   headerTextContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: "center",
-    gap: 10,
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: "flex-start",
+    gap: 2,
   },
   userName: {
     fontSize: 16,

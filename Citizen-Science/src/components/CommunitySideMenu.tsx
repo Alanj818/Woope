@@ -7,7 +7,7 @@ import { jwtDecode } from "jwt-decode";
 import { AccessToken } from "../util/token";
 import ProfileSearchScreen from "../screens/ProfileSearchScreen";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import ProfileStackNavigator from "./ProfileStackNav";
+import ProfileStackNavigator from "../navigation/ProfileStackNav";
 import PostDetailScreen from '../screens/PostDetailScreen';
 import CreatePostScreen from '../screens/CreatePostScreen';
 
