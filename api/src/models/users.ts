@@ -323,7 +323,7 @@ export const searchUsersWithName = async (name: string) => {
 		await pool.query('BEGIN');
 
 		const query = `
-		SELECT u.user_id, p.first_name, p.last_name, u.email, r.name AS role, o.name AS org 
+		SELECT u.user_id, p.first_name, p.last_name, p.image_url, u.email, r.name AS role, o.name AS org 
 		FROM users AS u
 		JOIN profile_information AS p
 		ON u.user_id = p.user_id

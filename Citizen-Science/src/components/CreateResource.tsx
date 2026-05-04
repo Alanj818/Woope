@@ -13,11 +13,13 @@ interface ModalProps {
     org_id: number,
     isVisible: boolean,
     onClose: () => void,
+    onSuccess?: () => void,
 }
-const CreateResource: React.FC<ModalProps> = ({org_id, isVisible, onClose}) => {
+const CreateResource: React.FC<ModalProps> = ({org_id, isVisible, onClose, onSuccess}) => {
     const handleSave = async () => {
         try {
             const response = await createResource(org_id, newInfo.name, newInfo.tagline, newInfo.description)
+            onSuccess?.();
         } catch (error) {
             console.log('Update Failed', error);
         }
@@ -62,7 +64,7 @@ const CreateResource: React.FC<ModalProps> = ({org_id, isVisible, onClose}) => {
                     <Text style={styles.label}>Resource Name</Text>
                     <TextInput 
                     onChangeText={(value) => handleInputChange("name", value)}
-                    maxLength={50}
+                    maxLength={100}
                     placeholder="Enter resource name"
                     style={styles.textbox}
                     ></TextInput>
@@ -92,10 +94,10 @@ const CreateResource: React.FC<ModalProps> = ({org_id, isVisible, onClose}) => {
                     </TouchableOpacity>
                     <TouchableOpacity 
                     style={[styles.button, styles.createButton]} 
-                    onPress = {() => {
-                        handleSave();
+                    onPress = {async () => {
+                        await handleSave();
                         onClose();
-                    }}>
+                    }} >
                         <Text style={styles.createButtonText}>Create</Text>
                     </TouchableOpacity>
                 </View>

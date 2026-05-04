@@ -54,8 +54,8 @@ router.get('/getresourceinfo/:resource_id', async(req: express.Request, res: exp
 });
 router.put('/update', async(req: express.Request, res: express.Response) => {
     try{
-        const {resource_id, tagline, text_description} = req.body;
-        const edit = await updateResource(resource_id,tagline,text_description);
+        const {resource_id, name, tagline, text_description} = req.body;
+        const edit = await updateResource(resource_id, name, tagline, text_description);
         res.status(200).json(edit);
     }catch(error){
         if (error instanceof Error) {
@@ -67,9 +67,9 @@ router.put('/update', async(req: express.Request, res: express.Response) => {
 });
 router.delete('/delete', async (req: express.Request, res: express.Response) => {
     try {
-        const {resource_id, name} = req.body;
-        await deleteResource(resource_id, name);
-        res.status(204);
+        const {resource_id} = req.body;
+        await deleteResource(resource_id);
+        res.sendStatus(204);
     } catch (error) {
         if (error instanceof Error) {
             res.status(500).json(`Internal server error: ${error.message}`);

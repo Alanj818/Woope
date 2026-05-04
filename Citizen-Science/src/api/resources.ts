@@ -17,12 +17,12 @@ export const getResourceInfo = async(resource_id: number) => {
     return fetchAPI(`/resources/getresourceinfo/${resource_id}`, 'GET');
 } 
 //update resource
-export const updateResource = async(resource_id: number, tagline: string, text_description: string) => {
-    return fetchAPI(`/resources/update`, 'PUT', {resource_id,tagline,text_description});
+export const updateResource = async(resource_id: number, name: string, tagline: string, text_description: string) => {
+    return fetchAPI(`/resources/update`, 'PUT', {resource_id, name, tagline, text_description});
 }
 //delete resource
-export const deleteResource = async (resource_id: number, name: string) => {
-    return fetchAPI(`/resources/delete`, 'DELETE', {resource_id, name});
+export const deleteResource = async (resource_id: number) => {
+    return fetchAPI(`/resources/delete`, 'DELETE', {resource_id});
 }
 //get all resource media belonging to a specific resource parent
 export const getResourceMedia = async(resource_id: number) => {

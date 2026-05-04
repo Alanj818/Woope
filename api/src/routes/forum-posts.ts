@@ -3,6 +3,7 @@ import {
     getPost,
     getPostById,
     getPostByUserId,
+    getPostByUserIdWithMedia,
     createPost,
     updatePost,
     deletePost,
@@ -73,6 +74,22 @@ router.get('/posts/:id/media', authenticateToken, async (req: express.Request, r
     try {
         const userId = Number(req.params.id);
         const posts = await getPostWithMedia(userId);
+        res.status(200).json(posts);
+    } catch (error) {
+        if (error instanceof Error) {
+            res.status(500).json(`Internal server error: ${error.message}`);
+        } else {
+            res.status(500).json('Internal server error: An unknown error occurred');
+        }
+    }
+});
+
+// Get posts with media by user ID — must be before /posts/user/:id
+router.get('/posts/user/:id/media', authenticateToken, async (req: express.Request, res: express.Response) => {
+    try {
+        const targetUserId = Number(req.params.id);
+        const currentUserId = (req as any).user?.user_id ?? targetUserId;
+        const posts = await getPostByUserIdWithMedia(targetUserId, currentUserId);
         res.status(200).json(posts);
     } catch (error) {
         if (error instanceof Error) {

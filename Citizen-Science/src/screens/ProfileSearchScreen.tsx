@@ -21,7 +21,7 @@ import { usePalette } from '../theme/paletteController';
 import { useFocusEffect } from '@react-navigation/native';
 import { AuthContext } from "../util/AuthContext";
 import { jwtDecode } from "jwt-decode";
-import { getAllPosts } from "../api/posts";
+import { getAllPostsWithMedia } from "../api/posts";
 import { AccessToken } from "../util/token";
 import { searchProfile } from "../api/community";
 
@@ -95,7 +95,7 @@ const ProfileSearchScreen: React.FC<ProfileSearchScreenProps> = ({
 
 			// fetch posts and filter locally (fallback if no server-side search endpoint)
 			try {
-				const postsList = await getAllPosts(userId, setUserToken);
+				const postsList = await getAllPostsWithMedia(userId, setUserToken);
 				const qLower = q.toLowerCase();
 				const matchedPosts = (postsList || []).filter((p: any) => {
 					const content = (p.content || "").toLowerCase();

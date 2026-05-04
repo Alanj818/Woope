@@ -27,7 +27,7 @@ const DeleteResource: React.FC<ModalProps> = ({ resource_id, org_id, isVisible, 
 
     const handleDelete = async () => {
         try {
-            await deleteResource(resource_id, '');
+            await deleteResource(resource_id);
             onClose();
             navigation.navigate("OrganizationProfile", { org_id });
         } catch (error) {

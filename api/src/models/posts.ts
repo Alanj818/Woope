@@ -72,7 +72,8 @@ export const getPost = async (currentUserId: number): Promise<UserLikedPosts[]> 
       ? row.org_name
       : row.first_name + ' ' + row.last_name, // Combining first name and last name into a single field
     likes_count: parseInt(row.likes_count),
-    user_liked: Boolean(row.user_liked) // This will be true if the user liked the post, false otherwise
+    user_liked: Boolean(row.user_liked), // This will be true if the user liked the post, false otherwise
+    user_avatar_url: row.image_url,
   }));
 };
 
@@ -83,8 +84,49 @@ export const getPostById = async (post_id: number): Promise<Post | null> => {
 
 export const getPostByUserId = async (user_id: number): Promise<Post[]> => {
   const response = await pool.query(
-    'SELECT * FROM posts AS p JOIN profile_information AS pi ON p.user_id=pi.user_id WHERE p.user_id=$1', [user_id]);
+    'SELECT p.*, pi.first_name, pi.last_name, pi.image_url FROM posts AS p JOIN profile_information AS pi ON p.user_id=pi.user_id WHERE p.user_id=$1 ORDER BY p.created_at DESC', [user_id]);
   return response.rows;
+}
+
+export const getPostByUserIdWithMedia = async (user_id: number, currentUserId: number): Promise<PostWithMedia[]> => {
+  const query = `
+    SELECT
+        posts.*,
+        profile_information.first_name,
+        profile_information.last_name,
+        profile_information.image_url,
+        COALESCE(COUNT(post_likes.post_id), 0) AS likes_count,
+        BOOL_OR(post_likes.user_id = $2) AS user_liked,
+        json_agg(
+          json_build_object(
+            'media_id', post_media.media_id,
+            'media_type', post_media.media_type,
+            'media_url', post_media.media_url,
+            'created_at', post_media.created_at,
+            'updated_at', post_media.updated_at
+          )
+        ) FILTER (WHERE post_media.media_id IS NOT NULL) AS media,
+        tags.name AS tag
+    FROM posts
+    JOIN profile_information ON posts.user_id = profile_information.user_id
+    LEFT JOIN post_likes ON posts.post_id = post_likes.post_id
+    LEFT JOIN post_media ON posts.post_id = post_media.post_id
+    LEFT JOIN post_tags ON posts.post_id = post_tags.post_id
+    LEFT JOIN tags ON post_tags.tag_id = tags.tag_id
+    WHERE posts.user_id = $1
+    GROUP BY posts.post_id, profile_information.first_name, profile_information.last_name, profile_information.image_url, tags.name
+    ORDER BY posts.created_at DESC
+  `;
+  const response = await pool.query(query, [user_id, currentUserId]);
+  return response.rows.map((row: any): PostWithUsername => ({
+    ...row,
+    userName: row.first_name + ' ' + row.last_name,
+    likes_count: parseInt(row.likes_count),
+    user_liked: Boolean(row.user_liked),
+    user_avatar_url: row.image_url,
+    media: row.media,
+    tag: row.tag || null,
+  }));
 }
 
 export const createPost = async (user_id: number, org_id: number | null, content: string): Promise<Post> => {

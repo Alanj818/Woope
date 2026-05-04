@@ -28,6 +28,10 @@ const SearchStackNavigator = ({ ...props }) => {
         initialParams={{ headerShown: false }}
         component={ProfileStackNavigator}
       ></Stack.Screen>
+      <Stack.Screen
+        name={"PostDetail"}
+        component={PostDetailScreen}
+      ></Stack.Screen>
     </Stack.Navigator>
   );
 };

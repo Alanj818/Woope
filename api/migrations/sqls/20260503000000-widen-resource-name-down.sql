@@ -1,0 +1,2 @@
+ALTER TABLE public.resource ALTER COLUMN name TYPE VARCHAR(20);
+ALTER TABLE public.resource_media ALTER COLUMN name TYPE VARCHAR(20);

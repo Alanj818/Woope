@@ -102,6 +102,7 @@ export const OrganizationProfile = ({ route }: { route: any }) => {
                         org_id={route.params.org_id}
                         isVisible={isModalVisible}
                         onClose={() => setIsModalVisible(false)}
+                        onSuccess={fetchResources}
                     />
                 </ScrollView>
             </SafeAreaView>

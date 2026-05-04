@@ -1,6 +1,7 @@
 import React, { useCallback, useContext, useState } from "react";
 import {
 	ActivityIndicator,
+	Dimensions,
 	FlatList,
 	Image,
 	TouchableOpacity,
@@ -18,7 +19,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { jwtDecode } from "jwt-decode";
 
 import TopNav from "../../components/TopNav";
-import { getPostByUserId } from "../../api/posts";
+import { getPostByUserIdWithMedia } from "../../api/posts";
 import { AuthContext } from "../../util/AuthContext";
 import { AccessToken } from "../../util/token";
 import { formatTimeAgo } from "../../util/formatTime";
@@ -66,7 +67,7 @@ const ProfilePostsScreen: React.FC<ProfilePostsScreenProps> = ({ route, navigati
 		}
 		setIsLoading(true);
 		try {
-			const data = await getPostByUserId(userId, setUserToken);
+			const data = await getPostByUserIdWithMedia(userId, setUserToken);
 			setPosts(Array.isArray(data) ? data : []);
 		} catch (error) {
 			console.error("Failed to load user posts", error);
@@ -109,15 +110,15 @@ const ProfilePostsScreen: React.FC<ProfilePostsScreenProps> = ({ route, navigati
 		const name = item.userName || item.username || profileName || "User";
 		const likes = typeof item.likes_count === "number" ? item.likes_count : null;
 		const commentsCount = Array.isArray(item.comments) ? item.comments.length : null;
-		const avatarUrl = (item as { user_avatar_url?: string }).user_avatar_url;
+		const avatarPath = (item as any).user_avatar_url || (item as any).image_url;
+		const avatarUri = avatarPath
+			? `${process.env.EXPO_PUBLIC_API_URL}${avatarPath}`
+			: "https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png";
 
 		return (
 			<TouchableOpacity
 				onPress={() =>
-					navigation.navigate("Home", {
-						screen: "PostDetail",
-						params: { post: item, source: "Profile" },
-					})
+					navigation.navigate("PostDetailScreen", { post: item, source: "Profile" })
 				}
 				activeOpacity={0.7}
 			>
@@ -125,11 +126,7 @@ const ProfilePostsScreen: React.FC<ProfilePostsScreenProps> = ({ route, navigati
 					<View style={styles.headerRow}>
 						<View style={styles.headerLeft}>
 							<Image
-								source={{
-									uri:
-										avatarUrl ||
-										"https://upload.wikimedia.org/wikipedia/commons/0/03/Twitter_default_profile_400x400.png",
-								}}
+								source={{ uri: avatarUri }}
 								style={styles.avatar}
 							/>
 							<View style={styles.headerTextContainer}>
@@ -141,6 +138,39 @@ const ProfilePostsScreen: React.FC<ProfilePostsScreenProps> = ({ route, navigati
 						</View>
 					</View>
 					{content ? <Text style={styles.postText}>{content}</Text> : null}
+					{(() => {
+					const media = (item as any).media;
+					if (!media || !Array.isArray(media)) return null;
+					const images = media.filter((m: any) => m.media_type === 'Image');
+					if (images.length === 0) return null;
+					const imageWidth = Dimensions.get('window').width - 44 - 22 * 2;
+					return (
+						<View style={{ marginTop: 8 }}>
+							<FlatList
+								data={images}
+								horizontal
+								pagingEnabled
+								showsHorizontalScrollIndicator={false}
+								keyExtractor={(m: any) => m.media_id.toString()}
+								style={{ width: imageWidth }}
+								renderItem={({ item: m }: { item: any }) => (
+									<Image
+										source={{ uri: `${process.env.EXPO_PUBLIC_API_URL}${m.media_url}` }}
+										style={{ width: imageWidth, height: 200, borderRadius: 12, backgroundColor: '#e5e7eb' }}
+										resizeMode="cover"
+									/>
+								)}
+							/>
+							{images.length > 1 && (
+								<View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 4, gap: 4 }}>
+									{images.map((_: any, idx: number) => (
+										<View key={idx} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#D1D5DB' }} />
+									))}
+								</View>
+							)}
+						</View>
+					);
+				})()}
 					<View style={styles.commentButton}>
 						<View style={styles.commentMeta}>
 							<Icon name="comment" size={18} color="#007AFF" />

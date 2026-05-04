@@ -104,6 +104,22 @@ export const getPostByUserId = async (
   }
 };
 
+// Get posts with media by user ID
+export const getPostByUserIdWithMedia = async (
+  userId: number,
+  setUserToken: (token: string | null) => void
+) => {
+  try {
+    return await fetchAPI(`/forum/posts/user/${userId}/media`, 'GET', null, setUserToken);
+  } catch (err) {
+    const msg = String((err && (err as Error).message) || '');
+    if (msg.toLowerCase().includes('post not found') || msg.toLowerCase().includes('posts not found')) {
+      return [];
+    }
+    throw err;
+  }
+};
+
 // Delete post
 export const deletePost = async (
   id: number,

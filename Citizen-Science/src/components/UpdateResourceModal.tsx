@@ -53,7 +53,7 @@ const UpdateResourceModal: React.FC<ModalProps> = ({
     // updates resource info in database
     const handleSave = async () => {
         try {
-            await updateResource(resource_id, editTagline, editDescription);
+            await updateResource(resource_id, editName, editTagline, editDescription);
             onClose();
         } catch (error) {
             console.log('Resource Info Update Failed', error);

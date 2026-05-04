@@ -116,31 +116,32 @@ export const getResourceInfo = async (resource_id: number): Promise<Resource[]> 
  * @returns {Promise<Resource[]>} The updated resource.
  */
 
-export const updateResource = async (resource_id: number, tagline: string, text_description: string) => {
+export const updateResource = async (resource_id: number, name: string, tagline: string, text_description: string) => {
     try {
-        let query;
-        let values;
-        if (tagline && text_description) {
-            query = `
-                UPDATE public.resource SET tagline = $1, text_description = $2 WHERE resource_id = $3 RETURNING *
-            `;
-            values = [tagline, text_description, resource_id];
+        const setClauses: string[] = [];
+        const values: any[] = [];
+
+        if (name) {
+            values.push(name);
+            setClauses.push(`name = $${values.length}`);
         }
-        else if (tagline && !text_description) {
-            query = `
-                UPDATE public.resource SET tagline = $1 WHERE resource_id = $2 RETURNING *
-            `;
-            values = [tagline, resource_id];
+        if (tagline !== undefined && tagline !== null) {
+            values.push(tagline);
+            setClauses.push(`tagline = $${values.length}`);
         }
-        else if (text_description && !tagline) {
-            query = `
-                UPDATE public.resource SET text_description = $1 WHERE resource_id = $2 RETURNING *
-            `;
-            values = [text_description, resource_id];
+        if (text_description !== undefined && text_description !== null) {
+            values.push(text_description);
+            setClauses.push(`text_description = $${values.length}`);
         }
-        else {
-            throw new Error("No fields entered, no changes were made")
+
+        if (setClauses.length === 0) {
+            throw new Error("No fields provided to update");
         }
+
+        values.push(resource_id);
+        const query = `
+            UPDATE public.resource SET ${setClauses.join(', ')} WHERE resource_id = $${values.length} RETURNING *
+        `;
         const response = await pool.query(query, values);
         return response.rows;
     }
@@ -155,12 +156,12 @@ export const updateResource = async (resource_id: number, tagline: string, text_
  * @param {string} name - Resource name.
  */
 
-export const deleteResource = async (resource_id: number, name: string) => {
+export const deleteResource = async (resource_id: number) => {
     try {
         let query = `
-            DELETE FROM public.resource WHERE resource_id = $1 AND name = $2
+            DELETE FROM public.resource WHERE resource_id = $1
         `;
-        let values = [resource_id, name];
+        let values = [resource_id];
         await pool.query(query, values);
     } catch (error) {
         throw new Error("Error deleting resource: " + (error as Error).message);
