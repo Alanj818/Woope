@@ -1,5 +1,4 @@
-#include <RadioLib.h>
-#include <LoraEnv.h>
+#include "LoraEnv.h"
 #ifndef _RADIOLIB_EX_LORAWAN_CONFIG_H
 #define _RADIOLIB_EX_LORAWAN_CONFIG_H
 
@@ -15,6 +14,8 @@ SX1262 Radio = new Module(8, 14, 12, 13);
 //US REGION FOR LORA RADIO
 const LoRaWANBand_t Region = US915;
 
+uint8_t subBand = 2;
+
 //OTAA Parameters//
 uint64_t appEUI =   RADIOLIB_LORAWAN_JOIN_EUI;
 uint64_t devEUI  =   RADIOLIB_LORAWAN_DEV_EUI;
@@ -23,7 +24,7 @@ uint8_t nwkKey[] = { RADIOLIB_LORAWAN_NWK_KEY };
 
 //Creation of a LoRaWAN NODE//
 //Check https://jgromes.github.io/RadioLib/class_lo_ra_w_a_n_node.html#aae05de563f765f14fe267e4d65844f76 For Documentation on Parameters, Not CHATGPT
-LoRaWANNode node(&Radio, &Region, 0);
+LoRaWANNode node(&Radio, &Region, subBand);
 
 //DEBUG SWITCH CASE 
 String stateDecode(const int16_t result) {

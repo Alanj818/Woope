@@ -1,23 +1,58 @@
-#include <Arduino.h>
 #include "RadioConfig.h"
-
+#include <Preferences.h>
+#include "BatConfig.h"
+#include "ScreenConfig.h"
 
 #define RX_PIN 47
 #define PMS_BAUD_RATE 9600
+#define VBAT_PIN 1
+
+Preferences prefs;
+uint8_t nonces[RADIOLIB_LORAWAN_NONCES_BUF_SIZE];
+
 
 HardwareSerial PMS(2);
 
-struct PMSData {
-  uint16_t pm1_atm;
-  uint16_t pm25_atm;
-  uint16_t pm10_atm;
-  bool     valid;
-  uint32_t lastUpdateMs;
-};
+// struct PMSData {
+//   uint16_t pm1_atm;
+//   uint16_t pm25_atm;
+//   uint16_t pm10_atm;
+//   bool     valid;
+//   uint32_t lastUpdateMs;
+// };
 
 // ------------ Helpers ------------
 static inline uint16_t u16(uint8_t hi, uint8_t lo) {
   return (uint16_t(hi) << 8) | lo;
+}
+
+void loadNonces() {
+  prefs.begin("lorawan", true);
+
+  if (prefs.isKey("nonces")) {
+    size_t len = prefs.getBytes("nonces", nonces, sizeof(nonces));
+    if (len == sizeof(nonces)) {
+      int16_t state = node.setBufferNonces(nonces);
+      debug(state != RADIOLIB_ERR_NONE, F("Failed to restore nonces"), state, false);
+      Serial.println("Nonces restored.");
+    } else {
+      Serial.println("Stored nonces size mismatch.");
+    }
+  } else {
+    Serial.println("No stored nonces found.");
+  }
+
+  prefs.end();
+}
+
+void saveNonces() {
+  prefs.begin("lorawan", false);
+
+  memcpy(nonces, node.getBufferNonces(), sizeof(nonces));
+  prefs.putBytes("nonces", nonces, sizeof(nonces));
+
+  prefs.end();
+  Serial.println("Nonces saved.");
 }
 
 // ------------ PMS parser (state machine) ------------
@@ -85,6 +120,12 @@ void setup() {
   while(!Serial); 
   delay(300);
 
+  //OLED STUFF
+  analogReadResolution(12);  // 0–4095
+  analogSetPinAttenuation(VBAT_PIN, ADC_11db);
+
+  screenBegin();
+
   //Initialize PMS UART (RX only)
   PMS.begin(PMS_BAUD_RATE, SERIAL_8N1, RX_PIN, -1);
   delay(300);
@@ -92,15 +133,24 @@ void setup() {
 
   //Initialize LoRaWAN Protocol//
   int16_t state = Radio.begin();
-  debug(state != RADIOLIB_ERR_NONE, F("Initialise radio failed"), state, true);
+  debug(state != RADIOLIB_ERR_NONE, F("Initialise radio failed"), state, false);
 
   //OTAA Initialization and Parameters
   state = node.beginOTAA(appEUI, devEUI, nwkKey, appKey);
-  debug(state != RADIOLIB_ERR_NONE, F("Initialise node failed"), state, true);
+  debug(state != RADIOLIB_ERR_NONE, F("Initialise node failed"), state, false);
+
+  loadNonces();
+
 
   //Activate OTAA
   state = node.activateOTAA();
-  debug(state != RADIOLIB_LORAWAN_NEW_SESSION, F("Join failed"), state, true);
+
+  saveNonces();
+
+  bool ok = (state == RADIOLIB_LORAWAN_NEW_SESSION) || (state == RADIOLIB_LORAWAN_SESSION_RESTORED);
+  
+  debug(!ok, F("Join failed"), state, false);
+
   delay(300); 
 
   Serial.println("LoRaWAN connection SET.\n"); 
@@ -108,6 +158,15 @@ void setup() {
 }
 
 void loop() {
+  //Battery stuff
+  uint16_t raw = analogRead(VBAT_PIN);
+  float vadc = adcValue(raw);
+  float vbat = batValue(vadc);
+  int32_t batPercent = batPercentage(vbat);
+
+
+
+
   Serial.println("Sending data ...\n");
   PMSData latest;
   if(pollPMSAndUpdate(latest)){
@@ -139,27 +198,43 @@ void loop() {
     debug(state < RADIOLIB_ERR_NONE, F("Error in sendReceive"), state, false);
 
     //Checking if Downlink (Data From ADMIN WEBSITE) was received
-    if(state > 0) {
-      Serial.println(F("Received a downlink"));
-      //Store it in a buffer here using node.sendReceive()
-      //For documentation check here https://jgromes.github.io/RadioLib/class_lo_ra_w_a_n_node.html#a85cf006ffd97ece3b2d2974b715540cb
-      for(size_t i = 0; i < downBufferSize; i++){
-        Serial.print("BYTE: " + i);
-        Serial.println(downBuffer[i], HEX);
+    // if(state > 0) {
+    //   Serial.println(F("Received a downlink"));
+    //   //Store it in a buffer here using node.sendReceive()
+    //   //For documentation check here https://jgromes.github.io/RadioLib/class_lo_ra_w_a_n_node.html#a85cf006ffd97ece3b2d2974b715540cb
+    //   for(size_t i = 0; i < downBufferSize; i++){
+    //     Serial.print("BYTE: ");
+    //     Serial.println(downBuffer[i], HEX);
 
-      }
-    } else {
-      Serial.println(F("No downlink received"));
-    }
+    //   }
+    // } else {
+    //   Serial.println(F("No downlink received"));
+    // }
+    // Serial.print("PM1=");
+    // Serial.print(latest.pm1_atm);
+    // Serial.print(" PM2.5=");
+    // Serial.print(latest.pm25_atm);
+    // Serial.print(" PM10=");
+    // Serial.println(latest.pm10_atm);
+    // Serial.print("");
+    // Serial.print(batPercent);
+    // Serial.print("%");
 
-  // if (pollPMSAndUpdate(latest)) {
-  //   Serial.print("PM1=");
-  //   Serial.print(latest.pm1_atm);
-  //   Serial.print(" PM2.5=");
-  //   Serial.print(latest.pm25_atm);
-  //   Serial.print(" PM10=");
-  //   Serial.println(latest.pm10_atm);
-  // }
+    display.clearDisplay(); 
+    drawHello();
+    display.display();
+    
   }
-  delay(500);
+    display.clearDisplay(); 
+    drawStatus(latest, batPercent);
+    display.display();
+
+    Serial.print("raw=");
+    Serial.print(raw);
+    Serial.print(" vadc=");
+    Serial.print(vadc, 6);
+    Serial.print(" vbat=");
+    Serial.println(vbat, 3);
+
+  delay(2000);
 }
